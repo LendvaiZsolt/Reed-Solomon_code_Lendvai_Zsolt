@@ -1,0 +1,5 @@
+streamlit>=1.33.0
+numpy>=1.24.0
+galois>=0.4.0
+reedsolo>=1.7.0
+unireedsolomon>=1.0.6
