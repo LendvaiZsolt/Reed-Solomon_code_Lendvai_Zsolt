@@ -26,10 +26,15 @@ def _superscript_int(n: int) -> str:
 
 
 def _build_alpha_power_labels() -> dict[int, str]:
+    """Minden 0…15 int címkéje; nem csak int(alpha**k) kulcsokra támaszkodunk (galois verziók közti eltérések ellen)."""
     alpha = F.primitive_element
     d: dict[int, str] = {0: '0'}
-    for k in range(15):
-        d[int(alpha**k)] = 'α' + _superscript_int(k)
+    for v in range(1, 16):
+        fv = F(v)
+        for k in range(15):
+            if alpha**k == fv:
+                d[v] = 'α' + _superscript_int(k)
+                break
     return d
 
 
@@ -404,34 +409,6 @@ def decode_rs84(r_ints: list[int]) -> tuple[list[int], list[int]] | None:
     if any(s != F(0) for s in S_check):
         return None
     return (c, ev)
-
-
-def reedsolo_apply_error_vector(cw8: list[int], e8: list[int]) -> list[int]:
-    return [int(F(int(cw8[i]) & 15) + F(int(e8[i]) & 15)) & 15 for i in range(N)]
-
-
-def reedsolo_decode_try(r8: list[int]) -> tuple[list[int], list[int], list[int]] | None:
-    from reedsolo import ReedSolomonError
-
-    rsc = rs84_reedsolo_codec()
-    try:
-        dmsg, dfull, erra = rsc.decode(bytearray((int(x) & 15 for x in r8[:N])))
-    except ReedSolomonError:
-        return None
-    return (
-        [int(x) & 15 for x in dmsg],
-        [int(x) & 15 for x in dfull],
-        [int(x) for x in erra],
-    )
-
-
-def reedsolo_package_version() -> str:
-    try:
-        from importlib.metadata import version
-
-        return version('reedsolo')
-    except Exception:
-        return '?'
 
 
 def single_error_from_syndrome(s: galois.FieldArray, H_mat: galois.FieldArray) -> Tuple[Optional[int], Optional[galois.FieldArray]]:

@@ -69,7 +69,7 @@ def build_h_systematic_from_g(G: galois.FieldArray, *, parity_right: bool) -> ga
     return H
 
 
-def build_gh_from_generator_polynomial() -> tuple[galois.FieldArray, galois.FieldArray, galois.Poly]:
+def build_gh_from_generator_polynomial() -> tuple[galois.FieldArray, galois.FieldArray]:
     n, k = (7, 4)
     F = galois.GF(2 ** 3)
     alpha = F.primitive_element
@@ -93,7 +93,7 @@ def build_gh_from_generator_polynomial() -> tuple[galois.FieldArray, galois.Fiel
         rows.append(c_sys)
     G = F(rows)
     H = build_h_systematic_from_g(G, parity_right=True)
-    return (G, H, g_poly)
+    return (G, H)
 
 
 def permute_columns_parity_order(G_base: galois.FieldArray, H_base: galois.FieldArray, parity_right: bool) -> tuple[galois.FieldArray, galois.FieldArray]:
@@ -112,23 +112,7 @@ GF = galois.GF(2 ** 3)
 N, K = (7, 4)
 SHOW_KODOLAS_C6_DESCENDING = False
 SHOW_KODOLAS_CI_INT_LIST = False
-G_BASE, H_BASE, G_POLY = build_gh_from_generator_polynomial()
-
-
-def _t_r_cp_polys_from_message(m_vals: list[int]) -> tuple[galois.Poly, galois.Poly, galois.Poly]:
-    Z = GF(0)
-    ONE = GF(1)
-    m_poly = galois.Poly([GF(m_vals[0]), GF(m_vals[1]), GF(m_vals[2]), GF(m_vals[3])], field=GF, order='asc')
-    x3 = galois.Poly([Z, Z, Z, ONE], field=GF, order='asc')
-    t = m_poly * x3
-    r = t % G_POLY
-    cp = t + r
-    return (t, r, cp)
-
-
-def natural_poly_coeffs_from_message(m_vals: list[int]) -> list[int]:
-    _, _, cp = _t_r_cp_polys_from_message(m_vals)
-    return [int(x) for x in cp.coefficients(order='asc', size=N)]
+G_BASE, H_BASE = build_gh_from_generator_polynomial()
 
 
 def gf_row_to_ints(row: np.ndarray) -> list[int]:
