@@ -145,10 +145,10 @@ with tab_enc:
         v = rc.letter_to_gf_int(ch)
         row = {'Pozíció': i + 1, 'Betű': ch}
         row.update(rc.gf_int_to_labels(v))
-        rows_enrc.append(row)
+        rows_enc.append(row)
     rowp = {'Pozíció': 4, 'Betű': 'A (padding)'}
     rowp.update(rc.gf_int_to_labels(0))
-    rows_enrc.append(rowp)
+    rows_enc.append(rowp)
     st.dataframe(rows_enc, use_container_width=True)
     m_ints_enc = rc.gf_row_to_ints(m)
     st.markdown('**m** (int, m₀…m₃): ' + rc.format_gf8_int_tuple(m_ints_enc))
