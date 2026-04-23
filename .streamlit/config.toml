@@ -1,7 +1,7 @@
 # Többoldalas app: a pages/ mappa alapú oldal-váltó megjelenítése a sidebarban.
 # Ha globálisan ki volt kapcsolva, ez a projekt felülírja.
 [client]
-showSidebarNavigation = true
+showSidebarNavigation = false
 
 [ui]
 hideTopBar = false

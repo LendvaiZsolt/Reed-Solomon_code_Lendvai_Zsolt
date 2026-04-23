@@ -56,6 +56,10 @@ st.set_page_config(page_title='RS(7,4) – hibajavító kódolás', layout='wide
 st.title('RS(7,4) – hibajavító kódolás')
 st.markdown(f'**Műveleti test:** GF(2³), irreducibilis polinom **x³ + x + 1**. **Generátorpolinom** (a megadott alak): $g(x)=x^3+(\\alpha^2+1)x^2+\\alpha x+(\\alpha^2+1)$. A kód hossza **n = {rc.N}**, üzenet **k = {rc.K}**, paritás **n − k = {rc.N - rc.K}**.')
 with st.sidebar:
+    st.page_link('app.py', label='app - RS(7,4) rész')
+    st.page_link('pages/2_rs84.py', label='rs84 - RS(8,4) rész')
+    st.page_link('pages/3_dokumentacio.py', label='Használati útmutató')
+    st.divider()
     _dolgozat_prev = st.session_state.get('_dolgozat_checkbox_prev', False)
     dolgozat_alap = st.checkbox('A dolgozat hibaértékeinek használata', value=False, key='dolgozat_alapadatok')
     if dolgozat_alap and (not _dolgozat_prev):
@@ -378,4 +382,3 @@ with tab_dec:
             st.error('A javított szó nem egyezik a küldött **c**-vel.')
     elif np.all(s_dec == 0):
         st.info(f'**s** = [0, 0, 0] → nincs észlelt hiba az **H** szerint; a helyes kód szó egyezik a fogadottal: **c** = **r** (int: {rc.format_int_row(r_dec_ints)}; 3 bit / pozíció: {rc.format_gf8_symbols_as_bits(r_dec_ints)}; 21 bit (3 bitenként szóközzel): {rc.bits21_spaced_c0_to_c6(r_dec_ints)}).')
-st.caption(f'`cd "{APP_DIR}"` — `py -m streamlit run "rs74_app.py"` (vagy `app.py`)')

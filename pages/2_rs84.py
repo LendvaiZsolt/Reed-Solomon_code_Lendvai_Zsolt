@@ -506,6 +506,10 @@ st.markdown(
     f'$t = \\lfloor (d_{{\\min}} - 1) / 2 \\rfloor = \\lfloor ({_rs_d_min} - 1) / 2 \\rfloor = {_rs_t}$).'
 )
 with st.sidebar:
+    st.page_link('app.py', label='app - RS(7,4) rész')
+    st.page_link('pages/2_rs84.py', label='rs84 - RS(8,4) rész')
+    st.page_link('pages/3_dokumentacio.py', label='Használati útmutató')
+    st.divider()
     st.header('Bemenetek')
     st.subheader('4 szimbólum (A–P)')
     st.caption('Minden betűhöz **4 bit** (0…15); mind a négy hely üzenet **m₀…m₃**.')
@@ -877,4 +881,3 @@ with tab_dec:
             'Az **S₁…S₄** alapú dekóder **nem** talált megoldást — pl. **3 vagy több** szimbólumhiba, '
             'vagy ritka **hamis** minta (pl. degenerált Hankel-mátrix, nem megfelelő számú gyök a hibahelypolinomnak, szinguláris Vandermonde).'
         )
-st.caption(f'`cd "{APP_DIR}"` — `py -m streamlit run "rs74_app.py"` (vagy `app.py`)')
