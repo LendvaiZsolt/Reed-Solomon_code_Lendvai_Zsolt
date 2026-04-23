@@ -16,9 +16,8 @@ Ez a projekt két Streamlit oldalon mutatja be a Reed-Solomon kódolást, hiba-i
 
 ## Használati útmutató
 
-### 1. Cél
+### 1. Cél, hogy az alkalmazás bemutassa:
 
-1.1 Az alkalmazás bemutatja:
 - a kódolást (`m -> c`),
 - a csatornahibát (`r`, `e = r - c`),
 - a szindrómákat,
@@ -26,7 +25,7 @@ Ez a projekt két Streamlit oldalon mutatja be a Reed-Solomon kódolást, hiba-i
 
 ### 2. RS típus kiválasztása
 
-2.1 Alapoldal: **RS(7,4)** (`app`).  
+2.1 Alapértelmezett oldal: **RS(7,4)** (`app`).  
 2.2 Oldalváltással elérhető: **RS(8,4)** (`rs84`).
 
 ### 3. Paraméterek megadása
