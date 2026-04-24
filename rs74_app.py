@@ -1,4 +1,6 @@
 from __future__ import annotations
+import importlib
+import importlib.util
 from pathlib import Path
 from typing import Optional
 
@@ -8,7 +10,39 @@ import streamlit as st
 import rs74_core as rc
 import rs74_explain as ex
 
+importlib.reload(ex)
+
 APP_DIR = Path(__file__).resolve().parent
+
+
+def _call_render_g_parity_mod_g_long_division_expander(*, parity_right: bool) -> None:
+    """Streamlit Cloud: néha elavult `rs74_explain` marad a cache-ben; reload + opcionális fájlból exec."""
+    fn = getattr(ex, 'render_g_parity_mod_g_long_division_expander', None)
+    disk_err: str | None = None
+    if fn is None:
+        path = APP_DIR / 'rs74_explain.py'
+        spec = importlib.util.spec_from_file_location('_rs74_explain_disk', path)
+        if spec is not None and spec.loader is not None:
+            disk_mod = importlib.util.module_from_spec(spec)
+            try:
+                spec.loader.exec_module(disk_mod)
+            except Exception as e:
+                disk_err = repr(e)
+            else:
+                fn = getattr(disk_mod, 'render_g_parity_mod_g_long_division_expander', None)
+    if fn is not None:
+        fn(parity_right=parity_right)
+        return
+    with st.expander('Polinomosztás g(x) szerint (részletek)', expanded=False):
+        st.warning(
+            'A Cloud még nem a friss kódot futtatja, vagy nem a jó GitHub-repó / **main** ág van bekötve. '
+            'Streamlit: **App settings → Branch = main**, majd **Reboot app** (Manage app).'
+        )
+        st.caption('Betöltött `rs74_explain` (debug):')
+        st.code(getattr(ex, '__file__', 'ismeretlen'))
+        if disk_err is not None:
+            st.caption('Másodlagos betöltés a lemezről:')
+            st.code(disk_err)
 
 
 def _set_letters(letters: tuple[str, str, str]) -> None:
@@ -141,15 +175,7 @@ with tab_g:
         st.caption('**Szisztematikus H a G-ből:** ha **G = [P | I₄]**, akkor **H = [I₃ | Pᵀ]** (3×7). **H = H_base · Π** a paritás bal/jobb váltásnál.')
     st.dataframe(np.array(H, dtype=int), use_container_width=True)
     st.latex('H = \\begin{bmatrix} ' + ex.format_gf_matrix(H) + ' \\end{bmatrix}')
-    _render_g_parity_exp = getattr(ex, 'render_g_parity_mod_g_long_division_expander', None)
-    if _render_g_parity_exp is not None:
-        _render_g_parity_exp(parity_right=parity_right)
-    else:
-        with st.expander('Polinomosztás g(x) szerint (részletek)', expanded=False):
-            st.warning(
-                'Ez a blokk a legújabb **rs74_explain** modult várja. A Streamlit Cloud app deploy legyen a repó **main** ágának legfrissebb commitja '
-                '(benne: `render_g_parity_mod_g_long_division_expander`). Ha már friss, indíts **Reboot app**-ot a Manage app alatt.'
-            )
+    _call_render_g_parity_mod_g_long_division_expander(parity_right=parity_right)
 with tab_enc:
     st.subheader('Üzenet és kódolás')
     st.markdown('Választott szimbólumok: **' + ', '.join(chosen) + '**, majd **padding** a 4. helyen (**A** → 0).')
