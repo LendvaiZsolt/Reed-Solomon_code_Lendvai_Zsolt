@@ -141,7 +141,15 @@ with tab_g:
         st.caption('**Szisztematikus H a G-ből:** ha **G = [P | I₄]**, akkor **H = [I₃ | Pᵀ]** (3×7). **H = H_base · Π** a paritás bal/jobb váltásnál.')
     st.dataframe(np.array(H, dtype=int), use_container_width=True)
     st.latex('H = \\begin{bmatrix} ' + ex.format_gf_matrix(H) + ' \\end{bmatrix}')
-    ex.render_g_parity_mod_g_long_division_expander(parity_right=parity_right)
+    _render_g_parity_exp = getattr(ex, 'render_g_parity_mod_g_long_division_expander', None)
+    if _render_g_parity_exp is not None:
+        _render_g_parity_exp(parity_right=parity_right)
+    else:
+        with st.expander('Polinomosztás g(x) szerint (részletek)', expanded=False):
+            st.warning(
+                'Ez a blokk a legújabb **rs74_explain** modult várja. A Streamlit Cloud app deploy legyen a repó **main** ágának legfrissebb commitja '
+                '(benne: `render_g_parity_mod_g_long_division_expander`). Ha már friss, indíts **Reboot app**-ot a Manage app alatt.'
+            )
 with tab_enc:
     st.subheader('Üzenet és kódolás')
     st.markdown('Választott szimbólumok: **' + ', '.join(chosen) + '**, majd **padding** a 4. helyen (**A** → 0).')
