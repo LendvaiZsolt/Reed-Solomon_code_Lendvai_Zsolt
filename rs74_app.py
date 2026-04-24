@@ -141,6 +141,7 @@ with tab_g:
         st.caption('**Szisztematikus H a G-ből:** ha **G = [P | I₄]**, akkor **H = [I₃ | Pᵀ]** (3×7). **H = H_base · Π** a paritás bal/jobb váltásnál.')
     st.dataframe(np.array(H, dtype=int), use_container_width=True)
     st.latex('H = \\begin{bmatrix} ' + ex.format_gf_matrix(H) + ' \\end{bmatrix}')
+    ex.render_g_parity_mod_g_long_division_expander(parity_right=parity_right)
 with tab_enc:
     st.subheader('Üzenet és kódolás')
     st.markdown('Választott szimbólumok: **' + ', '.join(chosen) + '**, majd **padding** a 4. helyen (**A** → 0).')

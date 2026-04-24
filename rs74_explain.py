@@ -186,3 +186,192 @@ def render_s0_expander(c_vec: galois.FieldArray, H_mat: galois.FieldArray) -> No
                 for ln in ci_lines:
                     st.markdown(ln)
                 st.success(f'**Összeg (s_{{{i}}})** (GF(8), **⊕**): {syndrome_sum_markdown(si_sum, mask=7, alpha_map=rc.INT_TO_ALPHA_STR)}')
+
+
+def _rs74_generator_g_poly() -> galois.Poly:
+    F = rc.GF
+    alpha = F.primitive_element
+    ONE = F(1)
+    Z = F(0)
+    g0 = alpha**2 + ONE
+    g1 = alpha
+    g2 = alpha**2 + ONE
+    return galois.Poly([g0, g1, g2, ONE], field=F, order='asc')
+
+
+def poly_long_divide_by_g_records(*, dividend: galois.Poly, g: galois.Poly) -> tuple[list[dict[str, object]], galois.Poly]:
+    """Maradékos osztás GF(2^3)[x]-ben; g monikus, deg(g)=3. Vissza: lépésrekordok és végső maradék."""
+    F = dividend.field
+    Z = F(0)
+    zero = galois.Poly([Z], field=F)
+    dg = int(g.degree)
+    r = dividend
+    steps: list[dict[str, object]] = []
+    while r != zero and int(r.degree) >= dg:
+        dr = int(r.degree)
+        shift = dr - dg
+        coeffs_r = list(r.coefficients(order='asc', size=dr + 1))
+        cr = coeffs_r[dr]
+        coeffs_g = list(g.coefficients(order='asc', size=dg + 1))
+        cg = coeffs_g[dg]
+        qc = cr / cg
+        xs = galois.Poly([Z] * shift + [F(1)], field=F, order='asc')
+        sub = qc * xs * g
+        r_next = r - sub
+        steps.append(
+            {
+                'dr': dr,
+                'shift': shift,
+                'qc': int(qc),
+                'remainder_before': r,
+                'subtrahend': sub,
+                'remainder_after': r_next,
+            }
+        )
+        r = r_next
+    return (steps, r)
+
+
+def _poly_display_latex(p: galois.Poly) -> str:
+    return str(p)
+
+
+def _leading_mono_from_poly(p: galois.Poly) -> tuple[int, int]:
+    """(fok, együttható) a nemnulla polinom főtagjához."""
+    d = int(p.degree)
+    c = int(list(p.coefficients(order='asc', size=d + 1))[d])
+    return (d, c)
+
+
+def _mono_latex(c: int, d: int) -> str:
+    c = int(c) & 7
+    d = int(d)
+    if d < 0:
+        return '0'
+    if d == 0:
+        return str(c)
+    if d == 1:
+        return 'x' if c == 1 else f'{c}x'
+    if c == 1:
+        return f'x^{{{d}}}'
+    return f'{c}x^{{{d}}}'
+
+
+def _mono_quotient_latex(qc: int, shift: int) -> str:
+    qc = int(qc) & 7
+    shift = int(shift)
+    if shift == 0:
+        return str(qc)
+    if qc == 1:
+        return f'x^{{{shift}}}'
+    return f'{qc}x^{{{shift}}}'
+
+
+def _hányados_rész_mondat(*, step_i: int, n_steps: int) -> str:
+    if n_steps == 1:
+        return 'Ez lesz a hányadosunk első (és jelen esetben egyetlen) tagja.'
+    if step_i == 0:
+        return 'Ez lesz a hányadosunk első tagja.'
+    if step_i == n_steps - 1:
+        return 'Ez lesz a hányadosunk utolsó tagja.'
+    return 'Ez lesz a hányadosunk egy újabb tagja.'
+
+
+def _render_rs74_division_pedagogy_row(*, g_body_tex: str, k: int, steps: list, rem: galois.Poly, dg: int) -> None:
+    """Ugyanaz a levezetés / formázás minden bázisra: t(x)=x^k osztása g(x)-szel (GF(8), char 2)."""
+    st.markdown(f'Az **$t(x)=x^{{{k}}}$** polinomot elosztjuk a **$g(x)={g_body_tex}$** polinommal.')
+    gs = 0
+    n_steps = len(steps)
+    for si, stp in enumerate(steps):
+        rb = stp['remainder_before']
+        sub = stp['subtrahend']
+        ra = stp['remainder_after']
+        qc = int(stp['qc'])
+        shift = int(stp['shift'])
+        d_lead, c_lead = _leading_mono_from_poly(rb)
+        lead_tex = _mono_latex(c_lead, d_lead)
+        quot_tex = _mono_quotient_latex(qc, shift)
+        gs += 1
+        st.markdown(
+            f'**{gs}. lépés:** Az első tagok osztása: Vegyük az aktuális polinom legmagasabb fokú tagját (**${lead_tex}$**) '
+            'és osszuk el az osztó legmagasabb fokú tagjával (**$x^3$**).'
+        )
+        st.latex(fr'{lead_tex} : x^3 = {quot_tex}')
+        st.markdown(_hányados_rész_mondat(step_i=si, n_steps=n_steps))
+        gs += 1
+        st.markdown(
+            f'**{gs}. lépés:** Visszaszorzás: Szorozzuk vissza az osztót (**$g(x)={g_body_tex}$**) a kapott **${quot_tex}$** taggal: '
+            f'$\\displaystyle {_poly_display_latex(sub)}$'
+        )
+        gs += 1
+        st.markdown(
+            f'**{gs}. lépés:** Maradék — a GF($2^3$) polinomgyűrű **char 2** teste miatt a „kivonás” **együtthatónként megegyezik a $\\oplus$** művelettel.'
+        )
+        st.markdown('Az aktuális polinomhoz **hozzáadjuk** a visszaszorzás eredményét:')
+        st.latex(
+            rf'{_poly_display_latex(rb)} + \left({_poly_display_latex(sub)}\right) = {_poly_display_latex(ra)}'
+        )
+    d_rem = int(rem.degree)
+    st.markdown(
+        f'Mivel a kapott maradék foka (**{d_rem}**) kisebb, mint az osztó foka (**{dg}**), az osztás **befejeződött**.'
+    )
+    st.markdown('**Végeredmény**')
+    st.markdown(
+        f'A **$t(x)=x^{{{k}}}$** polinom **$g(x)$**-re vett maradéka (a szisztematikus paritás **$c_0,c_1,c_2$** az **$x^0,x^1,x^2$** szerint):'
+    )
+    st.latex(r'r(x)=' + _poly_display_latex(rem))
+
+
+def render_g_parity_mod_g_long_division_expander(*, parity_right: bool) -> None:
+    """G sorainak paritásblokkja: t(x)=x^{3+i} osztása g(x)-szel; szöveg a paritás bal/jobb nézethez igazítva."""
+    F = rc.GF
+    Z = F(0)
+    g = _rs74_generator_g_poly()
+    x = galois.Poly([Z, F(1)], field=F, order='asc')
+    col_label = '4…6' if parity_right else '0…2'
+    g_layout = '**[I₄ | P]** (paritás jobbra)' if parity_right else '**[P | I₄]** (paritás balra)'
+    title = (
+        'Polinomosztás **g(x)** szerint: **x³, x⁴, x⁵, x⁶** → a **G** sorok **(c₀,c₁,c₂)** paritása — '
+        + f'aktuális elrendezés: {g_layout}, oszlopok **{col_label}**.'
+    )
+    with st.expander(title, expanded=False):
+        _gc = [int(x) for x in g.coefficients(order='asc', size=4)]
+        _c0, _c1, _c2, _ = _gc
+        _g_int_line = rf'g(x)=x^3+{_c2}x^2+{_c1}x+{_c0}'
+        st.latex(
+            r'\begin{array}{c}'
+            r'g(x)=x^3+(\alpha^2+1)x^2+\alpha x+(\alpha^2+1) \\[0.35em]'
+            + _g_int_line
+            + r' \\[0.4em]'
+            + r'm(x)\in\{1,x,x^2,x^3\},\ \text{majd}\ t(x)=m(x)\cdot x^3'
+            + r'\end{array}'
+        )
+        if parity_right:
+            st.markdown(
+                'A **G** **i.** sora annak a kódszónak az együtthatói, amikor az üzenet az **i.** bázisvektor '
+                '(négy szimbólumból csak az **i.** helyen **1**, máshol **0**). Üzenetpolinom **$m(x)\\in\\{1,x,x^2,x^3\\}$**; '
+                'szisztematikus lépés: **$t(x)=m(x)\\cdot x^{n-k}$**, itt **$n-k=3$**, tehát **$t(x)=m(x)\\,x^3$** — az osztandók sorban **$x^3,x^4,x^5,x^6$**. '
+                'A **$r(x)=t(x)\\bmod g(x)$** maradék foka **$<3$**; együtthatói **$(c_0,c_1,c_2)$** az **$x^0,x^1,x^2$** tagoknál — ez a **három paritás szimbólum**. '
+                '**$G=[\\mathbf{I}_4\\,|\\,\\mathbf{P}]$** (paritás jobbra) esetén a program ezt a **hármas** a mátrix **4., 5., 6.** oszlopába teszi (**P** jobbra); '
+                'az **1…4.** oszlop egységmátrixa a **$x^3\\ldots x^6$** helyekhez kötött üzenetrész (nem a polinom legalacsonyabb négy tagja).'
+            )
+        else:
+            st.markdown(
+                'A **G** **i.** sora annak a kódszónak az együtthatói, amikor az üzenet az **i.** bázisvektor '
+                '(négy szimbólumból csak az **i.** helyen **1**, máshol **0**). Üzenetpolinom **$m(x)\\in\\{1,x,x^2,x^3\\}$**; '
+                '**$t(x)=m(x)\\,x^3$**; osztandók **$x^3,x^4,x^5,x^6$**; a **$t(x)\\bmod g(x)$** maradék együtthatói **$(c_0,c_1,c_2)$** adják a paritást. '
+                'A tárolt **$[\\mathbf{I}_4\\,|\\,\\mathbf{P}]$** alakban ez a hármas a **4…6.** oszlop; **$[\\mathbf{P}\\,|\\,\\mathbf{I}_4]$** nézetben oszlop-permutáció miatt ugyanezek az értékek a fenti **G** **0., 1., 2.** oszlopa.'
+            )
+
+        _g_body = f'x^3+{_c2}x^2+{_c1}x+{_c0}'
+        for i in range(4):
+            k = 3 + i
+            t = x**k
+            steps, rem = poly_long_divide_by_g_records(dividend=t, g=g)
+            m_latex = '1' if i == 0 else ('x' if i == 1 else f'x^{i}')
+            st.markdown(
+                f'#### **{i}.** bázis (üzenetpolinom **$m(x)={m_latex}$**) → eltolás: **$t(x)=m(x)\\,x^3=x^{{{k}}}$**'
+            )
+            _render_rs74_division_pedagogy_row(
+                g_body_tex=_g_body, k=k, steps=steps, rem=rem, dg=int(g.degree)
+            )
