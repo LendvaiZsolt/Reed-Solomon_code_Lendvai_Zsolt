@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
-"""Frissíti a README.md Verziószám: blokkját (v1.N + dátum + SHA; a commit link külön sorban)."""
+"""README.md végén a Verziószám: blokk — GitHub URL a repo_github modulból (origin / GITHUB_REPOSITORY)."""
 from __future__ import annotations
 
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 README = ROOT / "README.md"
-# Egy soros (régi), kétsoros, vagy üres sorral elválasztott verzió + commit URL blokk
-VERN = re.compile(r"^Verziószám:.+$(?:\n\n?https://github\.com/\S+)?", re.MULTILINE)
+
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+import repo_github as rg  # noqa: E402
 
 
 def run_git(*args: str) -> str:
@@ -19,20 +21,12 @@ def run_git(*args: str) -> str:
     return (r.stdout or "").strip()
 
 
-def github_repo_slug() -> str:
-    gr = os.environ.get("GITHUB_REPOSITORY", "").strip()
-    if gr:
-        return gr
-    try:
-        url = run_git("config", "--get", "remote.origin.url")
-    except subprocess.CalledProcessError as e:
-        raise SystemExit("Nincs git remote (origin); állítsd GITHUB_REPOSITORY-t CI-ban.") from e
-    u = url.replace(".git", "").rstrip("/")
-    if "github.com:" in u:
-        return u.split("github.com:", 1)[-1]
-    if "github.com/" in u:
-        return u.split("github.com/", 1)[-1]
-    raise SystemExit(f"Nem sikerült GitHub owner/repo kiolvasni: {url!r}")
+def replace_readme_version_footer(text: str, new_footer: str) -> str:
+    key = "Verziószám:"
+    i = text.rfind(key)
+    if i == -1:
+        return text.rstrip() + "\n\n" + new_footer + "\n"
+    return text[:i].rstrip() + "\n\n" + new_footer + "\n"
 
 
 def main() -> int:
@@ -40,16 +34,14 @@ def main() -> int:
     count = run_git("rev-list", "--count", sha)
     date = run_git("log", "-1", "--format=%ci", sha)
     short = run_git("rev-parse", "--short", sha)
-    full = run_git("rev-parse", sha)
-    slug = github_repo_slug()
-    link = f"https://github.com/{slug}/commit/{full}"
-    new_block = f"Verziószám: v1.{count} ({date}; {short})\n\n{link}"
+
+    slug = rg.github_repo_slug_or_exit(cwd=ROOT)
+    root = rg.github_repo_root_url(cwd=ROOT)
+    assert root is not None
+    new_block = f"Verziószám: v1.{count} ({date}; {short})\n\n**GitHub:** [{slug}]({root})\n"
 
     text = README.read_text(encoding="utf-8")
-    if VERN.search(text):
-        nt = VERN.sub(new_block, text)
-    else:
-        nt = text.rstrip() + "\n\n" + new_block + "\n"
+    nt = replace_readme_version_footer(text, new_block)
 
     if nt == text:
         print("README Verziószám blokk már naprakész.", file=sys.stderr)

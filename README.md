@@ -72,6 +72,7 @@ Ez a projekt két Streamlit oldalon mutatja be a Reed-Solomon kódolást, hiba-i
 8.2 Egyhibás eset (szindróma -> javítás).  
 8.3 Határesetek: RS(7,4)-nél 2-3 hiba, RS(8,4)-nél 3 hiba.
 
-Verziószám: v1.9 (2026-04-30 21:50:20 -0400; 0c0e8a6)
+Verziószám: v1.10 (2026-04-30 21:54:44 -0400; 7fd84c1)
 
-https://github.com/LendvaiZsolt/Reed-Solomon_code_Lendvai_Zsolt/commit/0c0e8a6e30b1ecfad82a819ef873b3e38f960f8b
+**GitHub:** [LendvaiZsolt/Reed-Solomon_code_Lendvai_Zsolt](https://github.com/LendvaiZsolt/Reed-Solomon_code_Lendvai_Zsolt)
+
