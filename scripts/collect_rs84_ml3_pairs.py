@@ -27,21 +27,14 @@ def ints_to_word(v: np.ndarray) -> str:
 
 
 def ints_to_word_bold_errors(c: np.ndarray, r: np.ndarray) -> str:
-    """Szomszédos hibák egy **…** blokkban, hogy ne legyen **A****B** (négy csillag a táblában)."""
+    """Minden hibás szimbólum külön HTML <b>…</b> — nincs Markdown-csillag, nincs összevont blokk."""
     parts: list[str] = []
-    i = 0
-    while i < N:
-        if int(c[i]) == int(r[i]):
-            parts.append(LETTERS[int(r[i]) & 15])
-            i += 1
+    for i in range(N):
+        ch = LETTERS[int(r[i]) & 15]
+        if int(c[i]) != int(r[i]):
+            parts.append(f"<b>{ch}</b>")
         else:
-            j = i
-            buf: list[str] = []
-            while j < N and int(c[j]) != int(r[j]):
-                buf.append(LETTERS[int(r[j]) & 15])
-                j += 1
-            parts.append("**" + "".join(buf) + "**")
-            i = j
+            parts.append(ch)
     return "".join(parts)
 
 
@@ -132,9 +125,9 @@ def main() -> int:
     lines = [
         "# RS(8,4) — 3 szimbólumhiba, egyedi legközelebbi kódszó",
         "",
-        "Feltétel: Hamming-távolság a fogadott **r**-hez a legközelebbi kódszó egyedül az eredeti **c**, és d(c,r)=3.",
+        "Feltétel: Hamming-távolság a fogadott <b>r</b>-hez a legközelebbi kódszó egyedül az eredeti <b>c</b>, és d(c,r)=3.",
         "",
-        "| kódszó c | r (hibák **félkövér**) | legközelebbi kódszó (d=3) | d=4 távolságra: első 4 kódszó, … |",
+        "| kódszó c | r (hibás szimbólumok kiemelve) | legközelebbi kódszó (d=3) | d=4 távolságra: első 4 kódszó, … |",
         "| --- | --- | --- | --- |",
     ]
     for a, b, c, d in table_rows:
