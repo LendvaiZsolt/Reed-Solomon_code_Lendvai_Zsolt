@@ -27,13 +27,21 @@ def ints_to_word(v: np.ndarray) -> str:
 
 
 def ints_to_word_bold_errors(c: np.ndarray, r: np.ndarray) -> str:
+    """Szomszédos hibák egy **…** blokkban, hogy ne legyen **A****B** (négy csillag a táblában)."""
     parts: list[str] = []
-    for i in range(N):
-        ch = LETTERS[int(r[i]) & 15]
-        if int(c[i]) != int(r[i]):
-            parts.append(f"**{ch}**")
+    i = 0
+    while i < N:
+        if int(c[i]) == int(r[i]):
+            parts.append(LETTERS[int(r[i]) & 15])
+            i += 1
         else:
-            parts.append(ch)
+            j = i
+            buf: list[str] = []
+            while j < N and int(c[j]) != int(r[j]):
+                buf.append(LETTERS[int(r[j]) & 15])
+                j += 1
+            parts.append("**" + "".join(buf) + "**")
+            i = j
     return "".join(parts)
 
 
