@@ -10,8 +10,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 README = ROOT / "README.md"
-# Egy soros (régi) vagy kétsoros (link második sorban) blokk felülírása
-VERN = re.compile(r"^Verziószám:.+(?:\nhttps://github\.com/\S+)?", re.MULTILINE)
+# Egy soros (régi), kétsoros, vagy üres sorral elválasztott verzió + commit URL blokk
+VERN = re.compile(r"^Verziószám:.+$(?:\n\n?https://github\.com/\S+)?", re.MULTILINE)
 
 
 def run_git(*args: str) -> str:
@@ -43,7 +43,7 @@ def main() -> int:
     full = run_git("rev-parse", sha)
     slug = github_repo_slug()
     link = f"https://github.com/{slug}/commit/{full}"
-    new_block = f"Verziószám: v1.{count} ({date}; {short})\n{link}"
+    new_block = f"Verziószám: v1.{count} ({date}; {short})\n\n{link}"
 
     text = README.read_text(encoding="utf-8")
     if VERN.search(text):
