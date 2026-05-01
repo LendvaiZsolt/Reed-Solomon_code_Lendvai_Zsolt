@@ -76,7 +76,7 @@ Ez a projekt két Streamlit oldalon mutatja be a Reed-Solomon kódolást, hiba-i
 
 Bruteforce mintavételezéssel készült tábla: olyan **c** és **r** párok, ahol három szimbólumhiba mellett is az eredeti **c** marad az egyetlen legközelebbi kódszó (elméleti ML-javíthatóság). A 4. oszlopban csak az első négy, távolság 4-es „szomszéd” kódszó látszik, a többi helyén **…** áll.
 
-Nem végeztünk teljes körű vizsgálatot, csak szúrópróbaszerűen ellenőriztük a kódokat. Egy korábbi mérésünk alapján (ahol kb. 90 ezer véletlen próbálkozásból 1568 volt sikeres) a javítási arány nagyjából 1–2% körül mozog. Ez azt jelenti, hogy ha egy tetszőleges kódszóhoz véletlenszerűen három hibát adunk, az esetek csupán töredékében kapjuk vissza egyértelműen az eredeti szót. A pontos arány ettől némileg eltérhet, de az biztos, hogy nem 10–15%-os nagyságrendről, hanem csak pár százalékról beszélünk.
+Nem végeztünk teljes körű vizsgálatot, csak szúrópróbaszerűen ellenőriztük a kódokat. Egy korábbi mérésünk alapján (ahol kb. 90 ezer véletlen próbálkozásból 1568 volt sikeres) a javítási arány nagyjából 1–2% körül mozog. Ez azt jelenti, hogy ha egy tetszőleges kódszóhoz véletlenszerűen három hibát adunk, az esetek csupán töredékében kapjuk vissza egyértelműen az eredeti szót.
 
 [RS(8,4) ML tábla (Markdown a GitHubon)](https://github.com/LendvaiZsolt/Reed-Solomon_code_Lendvai_Zsolt/blob/main/exports/rs84_ml3_unique_nearest_pairs.md)
 
