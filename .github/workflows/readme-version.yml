@@ -1,0 +1,39 @@
+name: README verzió
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync-readme-version:
+    if: ${{ github.event_name == 'push' && !contains(github.event.head_commit.message, 'chore(readme): verzió') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: README Verziószám sor frissítése
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python scripts/update_readme_version.py
+
+      - name: Commit és push (ha változott)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet README.md; then
+            echo "README változatlan."
+            exit 0
+          fi
+          git add README.md
+          git commit -m "chore(readme): verzió"
+          git push

@@ -114,7 +114,7 @@ with st.sidebar:
     st.subheader('G mátrix: paritás bal / jobb')
     parity_sel = st.radio('A kód szó c = m·G sorrendje (ugyanaz a kód, más oszlop-permutáció)', (_SIDEBAR_PARITY_BALRA_LABEL, 'Jobbra: [m₀,m₁,m₂,m₃ | p₀,p₁,p₂]  →  G = [I₄ | P]'), index=0, key='parity_order')
     parity_right = parity_sel.startswith('Jobbra')
-    st.subheader('Hibák injektálása (1–3 szimbólum)')
+    st.subheader('Hibák injektálása (1 szimbólum)')
     corrupt = st.checkbox('Hiba beszúrása', value=False, key='corrupt')
     inj_mode = _SIDEBAR_INJ_MODE_KOZVETLEN
     num_errors = 1
@@ -123,7 +123,9 @@ with st.sidebar:
     recv_sym_list: list[int] = [0]
     if corrupt:
         inj_mode = st.radio('Hiba beállítás módja (minden hibára azonos)', (_SIDEBAR_INJ_MODE_KOZVETLEN, _SIDEBAR_INJ_MODE_OSSZEADAS), index=0, key='error_inj_mode')
-        num_errors = int(st.selectbox('Hibák száma', [1, 2, 3], index=0, key='num_symbol_errors'))
+        if int(st.session_state.get('num_symbol_errors', 1)) != 1:
+            st.session_state['num_symbol_errors'] = 1
+        num_errors = int(st.selectbox('Hibák száma', [1], index=0, key='num_symbol_errors'))
         err_pos_list = []
         err_mag_list = []
         recv_sym_list = []

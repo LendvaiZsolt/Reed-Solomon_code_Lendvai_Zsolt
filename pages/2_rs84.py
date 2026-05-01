@@ -417,16 +417,13 @@ _SIDEBAR_INJ_MODE_OSSZEADAS = 'Összeadás: r[j] = c[j] + e (e ≠ 0)'
 _RS84_MINTA_EGYENI = 'Egyéni beállítás'
 _RS84_MINTA_1 = '1-es mintahiba'
 _RS84_MINTA_2 = '2-es mintahiba'
-_RS84_MINTA_3 = '3-as mintahiba'
 _RS84_MINTAHIBA_PRESETS: dict[str, tuple[tuple[int, int], ...]] = {
     _RS84_MINTA_1: ((1, 12), (6, 2)),
     _RS84_MINTA_2: ((0, 15), (7, 1)),
-    _RS84_MINTA_3: ((3, 9), (4, 8)),
 }
 _RS84_MINTAHIBA_LETTERS: dict[str, tuple[str, str, str, str]] = {
     _RS84_MINTA_1: ('P', 'A', 'N', 'C'),
     _RS84_MINTA_2: ('D', 'C', 'B', 'A'),
-    _RS84_MINTA_3: ('A', 'B', 'C', 'P'),
 }
 
 
@@ -527,7 +524,7 @@ with st.sidebar:
                 )
             )
     m_vals = [core.letter_to_gf_int(ch) for ch in chosen]
-    st.subheader('Hibák injektálása (1–3 szimbólum)')
+    st.subheader('Hibák injektálása (1–2 szimbólum)')
     corrupt = st.checkbox('Hiba beszúrása', value=False, key='rs84_corrupt')
     inj_mode = _SIDEBAR_INJ_MODE_KOZVETLEN
     num_errors = 1
@@ -535,9 +532,11 @@ with st.sidebar:
     err_mag_list: list[int] = [1]
     recv_sym_list: list[int] = [0]
     if corrupt:
+        if st.session_state.get('rs84_minta_preset') == '3-as mintahiba':
+            st.session_state['rs84_minta_preset'] = _RS84_MINTA_EGYENI
         st.radio(
             'Mintahiba (kézi módosítás után: Egyéni beállítás)',
-            (_RS84_MINTA_EGYENI, _RS84_MINTA_1, _RS84_MINTA_2, _RS84_MINTA_3),
+            (_RS84_MINTA_EGYENI, _RS84_MINTA_1, _RS84_MINTA_2),
             index=0,
             key='rs84_minta_preset',
             on_change=_rs84_apply_minta_from_radio,
@@ -549,11 +548,15 @@ with st.sidebar:
             key='rs84_error_inj_mode',
             on_change=_rs84_minta_clear_if_drift,
         )
+        _ne_opts = [1, 2]
+        _ne_prev = int(st.session_state.get('rs84_num_symbol_errors', 1))
+        if _ne_prev not in _ne_opts:
+            st.session_state['rs84_num_symbol_errors'] = min(max(_ne_prev, 1), 2)
         num_errors = int(
             st.selectbox(
                 'Hibák száma',
-                [1, 2, 3],
-                index=0,
+                _ne_opts,
+                index=_ne_opts.index(int(st.session_state.get('rs84_num_symbol_errors', 1))),
                 key='rs84_num_symbol_errors',
                 on_change=_rs84_minta_clear_if_drift,
             )
