@@ -76,7 +76,7 @@ Ez a projekt két Streamlit oldalon mutatja be a Reed-Solomon kódolást, hiba-i
 
 Bruteforce mintavételezéssel készült tábla: olyan **c** és **r** párok, ahol három szimbólumhiba mellett is az eredeti **c** marad az egyetlen legközelebbi kódszó (elméleti ML-javíthatóság). A 4. oszlopban csak az első négy, távolság 4-es „szomszéd” kódszó látszik, a többi helyén **…** áll.
 
-[RS(8,4) ML tábla (Markdown)](exports/rs84_ml3_unique_nearest_pairs.md)
+[RS(8,4) ML tábla (Markdown a GitHubon)](https://github.com/LendvaiZsolt/Reed-Solomon_code_Lendvai_Zsolt/blob/main/exports/rs84_ml3_unique_nearest_pairs.md)
 
 Verziószám: v1.12 (2026-04-30 22:15:09 -0400; 067fe0c)
 
