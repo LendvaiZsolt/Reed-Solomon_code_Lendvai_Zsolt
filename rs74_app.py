@@ -7,6 +7,7 @@ from typing import Optional
 import numpy as np
 import streamlit as st
 
+import nav_visibility
 import rs74_core as rc
 import rs74_explain as ex
 
@@ -90,8 +91,10 @@ st.set_page_config(page_title='RS(7,4) – hibajavító kódolás', layout='wide
 st.title('RS(7,4) – hibajavító kódolás')
 st.markdown(f'**Műveleti test:** GF(2³), irreducibilis polinom **x³ + x + 1**. **Generátorpolinom** (a megadott alak): $g(x)=x^3+(\\alpha^2+1)x^2+\\alpha x+(\\alpha^2+1)$. A kód hossza **n = {rc.N}**, üzenet **k = {rc.K}**, paritás **n − k = {rc.N - rc.K}**.')
 with st.sidebar:
-    st.page_link('app.py', label='app - RS(7,4) rész')
-    st.page_link('pages/2_rs84.py', label='rs84 - RS(8,4) rész')
+    st.page_link('app.py', label='RS(7,4)')
+    st.page_link('pages/2_rs84.py', label='RS(8,4) GF(9)')
+    if nav_visibility.SHOW_RS84_GF16_PAGE_LINK:
+        st.page_link('pages/2_rs84_gf16.py', label='RS(8,4) GF(16) - törlésre kerül')
     st.page_link('pages/3_dokumentacio.py', label='Használati útmutató')
     st.divider()
     _dolgozat_prev = st.session_state.get('_dolgozat_checkbox_prev', False)
@@ -167,7 +170,7 @@ with tab_g:
     if parity_right:
         st.caption('**Paritás jobbra:** G = [I₄ | P] (első 4 oszlop egységmátrix). c = m · G → [m₀…m₃ | p₀…p₂].')
     else:
-        st.caption('Bal oldalt 3 paritásoszlop, jobb oldalt 4×4 egységmátrix. A sorokat úgy kapod, hogy veszed 1, x, x², x³ üzenetbázist, majd mindegyiket megszorzod x³-mal (x^{n−k}, itt n−k=3), és g(x)-re osztva a maradék adja a paritásrészt. Vagyis: x³, x⁴, x⁵, x⁶ maradékait kell kiszámolni g(x)-re modulo.')
+        st.caption('Bal oldalt 3 paritásoszlop, jobb oldalt 4×4 egységmátrix. A sorokat úgy kapod, hogy veszed 1, x, x², x³ üzenetbázist, majd mindegyiket megszorzod x³-mal ($x^{n-k}$, itt n−k=3), és g(x)-re osztva a maradék adja a paritásrészt. Vagyis: x³, x⁴, x⁵, x⁶ maradékait kell kiszámolni g(x)-re modulo.')
     st.dataframe(np.array(G, dtype=int), use_container_width=True)
     st.latex('G = \\begin{bmatrix} ' + ex.format_gf_matrix(G) + ' \\end{bmatrix}')
     st.subheader('Paritás-mátrix H (3 × 7)')
@@ -209,7 +212,6 @@ with tab_enc:
         st.latex('\\begin{bmatrix} ' + m_row_tex + ' \\end{bmatrix}')
     with row_bot_r:
         st.latex('\\begin{bmatrix} ' + c_tex_inner + ' \\end{bmatrix}')
-    ex.render_encoding_m_dot_g_expander(m, G, parity_right=parity_right)
     st.subheader('Kód szó α alakban')
     alpha_row = [rc.INT_TO_ALPHA_STR[v] for v in rc.gf_row_to_ints(c)]
     st.write(', '.join((f'c{j}={s}' for j, s in enumerate(alpha_row))))
@@ -227,11 +229,11 @@ with tab_enc:
     st.write('**21 bit, sorrend c₀→c₆ (konstans először):**', rc.bits21_c0_to_c6(ci))
     if rc.SHOW_KODOLAS_C6_DESCENDING:
         st.write('**21 bit, sorrend c₆→c₀ (x⁶ először, jegyzet-barát):**', rc.bits21_c6_to_c0(ci))
-    st.markdown('#### Az együtthatók kiszámolása a GF(2³) szorzás és összeadás (8×8) táblázat alapján (aktuális üzenet) (c₀…c₆)')
-    for j in range(rc.N):
-        st.markdown(ex.markdown_line_cj_from_m_dot_g(m_vals, G, j))
-    if parity_right:
-        st.info('**Paritás jobbra:** **c = m·G** = **[m₀,m₁,m₂,m₃ | r₀,r₁,r₂]** — a polinom **c₀…c₆** sorrendje ettől eltér (először a maradék alacsony fokú tagjai). Kézi ellenőrzéshez használd a polinom **c₀…c₆** együtthatóit (növekvő fok szerint).')
+    with st.expander('Az együtthatók kiszámolása a GF(2³) szorzás és összeadás (8×8) táblázat alapján (aktuális üzenet) (c₀…c₆)', expanded=False):
+        for j in range(rc.N):
+            st.markdown(ex.markdown_line_cj_from_m_dot_g(m_vals, G, j))
+        if parity_right:
+            st.info('**Paritás jobbra:** **c = m·G** = **[m₀,m₁,m₂,m₃ | r₀,r₁,r₂]** — a polinom **c₀…c₆** sorrendje ettől eltér (először a maradék alacsony fokú tagjai). Kézi ellenőrzéshez használd a polinom **c₀…c₆** együtthatóit (növekvő fok szerint).')
 with tab_err:
     st.subheader('Fogadott vektor és hibavektor')
     c_ints_err = rc.gf_row_to_ints(c)
