@@ -130,8 +130,8 @@ def _render_dec_tab_single_error_position_derivation(*, s_ints: list[int], j_hat
     """Egy szimbólumhiba: S₂/S₁ = S₁/S₀ = αʲ (Vandermonde H mellett); majd ε és javítás (GF(8), ⊕)."""
     s0, s1, s2 = (int(s_ints[0]) & 7, int(s_ints[1]) & 7, int(s_ints[2]) & 7)
     st.markdown('**Hiba pozíciójának meghatározása:**')
-    st.latex(r'\frac{S_2}{S_1} = \frac{S_1}{S_0} = \alpha^j')
     if s0 == 0 or s1 == 0:
+        st.latex(r'\frac{S_2}{S_1} = \frac{S_1}{S_0} = \alpha^j')
         st.caption('**S₀** vagy **S₁** = 0 esetén ez az egyszerű arány nem mindig használható; a **ĵ** értéket az alábbi **H**-oszlop illesztés adja.')
         return
     s0t = _gf8_to_alpha_latex(s0)
@@ -139,8 +139,21 @@ def _render_dec_tab_single_error_position_derivation(*, s_ints: list[int], j_hat
     s2t = _gf8_to_alpha_latex(s2)
     q21 = int(rc.GF(s2) / rc.GF(s1))
     q10 = int(rc.GF(s1) / rc.GF(s0))
-    st.latex(r'\frac{S_2}{S_1} = \frac{' + s2t + '}{' + s1t + '} = ' + _gf8_to_alpha_latex(q21))
-    st.latex(r'\frac{S_1}{S_0} = \frac{' + s1t + '}{' + s0t + '} = ' + _gf8_to_alpha_latex(q10))
+    st.latex(
+        r'\frac{S_2}{S_1} = \frac{S_1}{S_0} = \alpha^j \qquad\qquad\qquad'
+        + r'\frac{S_2}{S_1} = \frac{'
+        + s2t
+        + '}{'
+        + s1t
+        + '} = '
+        + _gf8_to_alpha_latex(q21)
+        + r' \qquad\qquad\qquad \frac{S_1}{S_0} = \frac{'
+        + s1t
+        + '}{'
+        + s0t
+        + '} = '
+        + _gf8_to_alpha_latex(q10)
+    )
     st.markdown('**Tehát**')
     st.latex(r'\alpha^{j} = ' + _gf8_to_alpha_latex(q21) + r' \Rightarrow j = ' + str(int(j_hat)))
     rj = int(r_ints[int(j_hat)]) & 7
