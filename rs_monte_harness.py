@@ -70,23 +70,6 @@ def _format_int_row(vec: list[int]) -> str:
     return "[" + ", ".join(str(int(x)) for x in vec) + "]"
 
 
-def _m_from_c_gf9(c_ints: list[int], G: galois.FieldArray) -> list[int]:
-    """c = m @ G (1×8) — m visszaállítása az első négy oszlop invertálhatóságával."""
-    c = F9([int(x) % 9 for x in c_ints[:N84]]).reshape(1, N84)
-    for cols in (list(range(4)), list(range(4, 8))):
-        G4 = G[:, cols]
-        try:
-            inv = np.linalg.inv(G4)
-        except np.linalg.LinAlgError:
-            continue
-        c4 = c[:, cols]
-        m_row = c4 @ inv
-        chk = m_row @ G
-        if np.array_equal(np.asarray(chk), np.asarray(c)):
-            return [int(x) for x in np.asarray(m_row).flatten()]
-    return [int(x) for x in np.asarray(c[:, :4] @ np.linalg.inv(G[:, :4])).flatten()]
-
-
 def _rs74_one_case(rng: np.random.Generator) -> tuple[str, str, str, str, str, str]:
     chosen = [str(rng.choice(rc.LETTER_ORDER)) for _ in range(3)]
     pad_int = 0
@@ -127,12 +110,7 @@ def _rs74_one_case(rng: np.random.Generator) -> tuple[str, str, str, str, str, s
         c_hat_ints = list(r_dec_ints)
     else:
         c_hat_ints = list(r_dec_ints)
-    cf = rc.GF(c_hat_ints).reshape(1, -1).flatten()
-    if parity_right:
-        m_hat = [int(cf[i]) & 7 for i in range(rc.K)]
-    else:
-        m_hat = [int(cf[i]) & 7 for i in range(rc.N - rc.K, rc.N)]
-    ok = m_hat == m_vals
+    ok = c_hat_ints == c_ints
     pos_str = ",".join(str(p) for p in err_positions) if err_positions else ""
     tag = "TEST_TRUE" if ok else "TEST_FALSE"
     return (
@@ -169,17 +147,14 @@ def _rs84_one_case(rng: np.random.Generator) -> tuple[str, str, str, str, str, s
                 em = int(rng.integers(1, 9))
                 r[0, pos] = r[0, pos] + F9(em)
     r_ints = [int(x) for x in np.asarray(r).flatten()][:N84]
+    c_ints = [int(x) for x in np.asarray(c).flatten()][:N84]
     orig_m_str = ",".join(str(int(x)) for x in m_vals)
     dec = g9.decode_rs84(r_ints, G_mat=_G84, H_T_mat=_H_T84)
     if dec is not None:
         c_hat_ints, _e = dec
     else:
         c_hat_ints = list(r_ints)
-    try:
-        m_hat = _m_from_c_gf9(c_hat_ints, _G84)
-    except (np.linalg.LinAlgError, ValueError):
-        m_hat = []
-    ok = m_hat == m_vals
+    ok = c_hat_ints == c_ints
     pos_str = ",".join(str(p) for p in err_positions) if err_positions else ""
     tag = "TEST_TRUE" if ok else "TEST_FALSE"
     return (
@@ -197,7 +172,7 @@ def run_random_batch(
     n_tests: int,
     rng: np.random.Generator | None = None,
 ) -> list[tuple[str, str, str, str, str, str, str]]:
-    """Soronként 7 mező (fájlban | elválasztó): ág, eredeti m, hiba_db, hiba_j, r, c_hat, TEST_*."""
+    """Soronként 7 mező (TSV tab): ág, eredeti m, hiba_db, hiba_j, r, ĉ, TEST_*; ĉ==küldött c ⇒ TEST_TRUE."""
     if rng is None:
         rng = np.random.default_rng()
     rows: list[tuple[str, str, str, str, str, str, str]] = []

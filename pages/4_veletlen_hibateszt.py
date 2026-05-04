@@ -27,38 +27,14 @@ with st.sidebar:
     st.divider()
 
 st.markdown(
-    "Minden futáskor **véletlen** választás: **RS(7,4)** vagy **RS(8,4) GF(9)** ág, majd ugyanilyen "
-    "logika, mint a bal oldali bemenetek: véletlen üzenet, paritás / injektálási mód (ahol értelmes), "
-    "0–2 hiba (RS(7,4)-nél legfeljebb 1 szándékos hiba). "
-    "A **TEST_TRUE** azt jelenti, hogy a javítás után visszakapott **m₀…m₃** (információs szimbólumok) "
-    "megegyezik az eredeti küldött üzenettel."
-)
-with st.expander("Miért lehet a kötegelt teszt lassabb, mint a felület egy frissítése?", expanded=False):
-    st.markdown(
-        "A Streamlit oldal egy interakcióra **egyszer** futtatja le a teljes láncot (kódolás → hiba → "
-        "dekódolás / javítás). A kötegelt teszt ugyanezt **sokszor egymás után** megismétli (akár **500** "
-        "független eset). **RS(8,4) GF(9)** ágon a `decode_rs84` belül **brute force**: sorban megpróbálja "
-        "az összes ésszerű 1–2 szimbólumhibás magyarázatot, amíg a kódtérbe illeszkedő **ĉ**-t meg nem találja — "
-        "egy fogadott szóra ez lehet fél–1 másodperc is; **500×** ez már összeadódik. "
-        "A két **m** vektor összehasonlítása önmagában tényleg elhanyagolható."
-    )
-with st.expander("Mit jelentenek a számok egy kimeneti sorban?", expanded=False):
-    st.markdown(
-        "A fájl **tabulátorral elválasztott** (TSV); egy sor mezői egymás mellett külön „cellákban” vannak. "
-        "Példa értelmezés **RS(8,4) GF(9)** ágon:\n\n"
-        "- **eredeti m** pl. `4,8,6,2` = **m₀, m₁, m₂, m₃** GF(9) decimális címkék (**0…8**).\n"
-        "- **hiba_db** pl. `2` = ennyi szándékos szimbólumhiba.\n"
-        "- **hiba pozíciók** pl. `2,4` = a kódszó **j** indexei (**0…7**).\n"
-        "- **fogadott r** / **javított c** = a két nyolcas int-vektor szövegesen; végül **eredmény_TEST**."
-    )
-st.caption(
-    "Kimeneti fájl: **`exports/rs_streamlit_random_harness.tsv`** — UTF-8, **tabulátor (TSV)**, első sor = fejléc. "
-    "Excelben: *Szövegből / adatok importálása* → elválasztó: tab. "
-    "Ág: `RS(7,4)` vagy `RS(8,4) GF(9)`. Felülírás minden futáskor; Cloud-on a GitHub **nem** frissül automatikusan."
+    "Minden futáskor véletlen választás: **RS(7,4)** vagy **RS(8,4) GF(9)** ágak között.. "
+    "Ugyanaz a választási logika, mint a bal oldali bemenetek: véletlen üzenet, paritás / injektálási mód "
+    "(ahol értelmes), 0–2 hiba (RS(7,4)-nél legfeljebb 1 szándékos hiba). "
+    "A **TEST_TRUE** azt jelenti, hogy a javítás után visszaállított kódszó **ĉ** megegyezik a küldött **c** "
+    "vektorral; a fogadott **r** általában eltér **c**-től (hiba), a teszt nem **m**-re, hanem **c** és **ĉ** egyezésére épül."
 )
 
 out_path = mh.default_output_path(repo_root=_ROOT)
-st.code(str(out_path.relative_to(_ROOT)), language=None)
 
 n = st.number_input("Tesztesetek száma (1…500)", min_value=1, max_value=500, value=10, step=1)
 if st.button("Tesztek futtatása", type="primary"):
