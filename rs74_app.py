@@ -10,6 +10,16 @@ import nav_visibility
 import rs74_core as rc
 import rs74_explain as ex
 
+# Vandermonde / kiértékelési H (s = r·Hᵀ); Streamlit Cloud-on néha régi rs74_core marad a cache-ben.
+_H_RS74_PARITY_EVAL_ROWS = [[1, 2, 4, 3, 6, 7, 5], [1, 4, 6, 5, 2, 3, 7], [1, 3, 5, 4, 7, 2, 6]]
+if not hasattr(rc, 'H_RS74_PARITY_EVAL'):
+    try:
+        importlib.reload(rc)
+    except Exception:
+        pass
+if not hasattr(rc, 'H_RS74_PARITY_EVAL'):
+    rc.H_RS74_PARITY_EVAL = rc.GF(_H_RS74_PARITY_EVAL_ROWS)
+
 importlib.reload(ex)
 
 APP_DIR = Path(__file__).resolve().parent
