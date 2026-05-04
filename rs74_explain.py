@@ -20,7 +20,7 @@ def syndrome_sum_markdown(si_sum: int, *, mask: int, alpha_map: dict[int, str]) 
 
 
 def syndrome_s_i_sum_display_gf8_triple(si_sum: int) -> str:
-    """Szindróma-komponens összeg: int; (polinom); (α-hatvány) — RS(7,4) Szindroma_0 expanderekhez."""
+    """Szindróma-komponens összeg: int; (polinom); (α-hatvány) — RS(7,4) Szindroma H expanderekhez."""
     v = int(si_sum) & 7
     poly = rc.INT_TO_ALPHA_STR[v]
     pwr = rc.INT_TO_ALPHA_POWER_STR[v]

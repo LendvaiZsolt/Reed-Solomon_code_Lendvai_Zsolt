@@ -205,20 +205,33 @@ def _render_dec_tab_error_magnitude_and_xor_correction(*, j_hat: int, s0: int, s
         + _gf8_to_alpha_latex(e)
     )
     st.markdown('**Tehát:**')
-    st.latex(r'\boxed{e_{' + str(jj) + r'} = ' + _gf8_to_alpha_latex(e) + r' \leftrightarrow ' + rc.int_to_bits3(e) + r'}')
-    st.markdown(f'**A fogadott {jj + 1}. szimbólum** (**r_{{{jj}}}**):')
     st.latex(
-        r'r_{'
+        r'\boxed{e_{'
         + str(jj)
         + r'} = '
-        + rc.int_to_bits3(rj)
-        + r' = '
+        + _gf8_to_alpha_latex(e)
+        + r' \leftrightarrow '
+        + rc.int_to_bits3(e)
+        + r' \leftrightarrow '
+        + str(int(e))
+        + r'}'
+    )
+    st.markdown(f'**A fogadott {jj + 1}. szimbólum** (**r_{{{jj}}}**):')
+    st.latex(
+        r'\boxed{r_{'
+        + str(jj)
+        + r'} = '
         + _gf8_int_to_alpha_poly_latex(rj)
+        + r' \leftrightarrow '
+        + rc.int_to_bits3(rj)
+        + r' \leftrightarrow '
+        + str(int(rj))
+        + r'}'
     )
     cj = int(F(rj) + F(e))
     st.markdown('**Javítás (GF(8) összeadás = bitek XOR):**')
     st.latex(
-        r'c_{'
+        r'\boxed{c_{'
         + str(jj)
         + r'} = r_{'
         + str(jj)
@@ -230,10 +243,11 @@ def _render_dec_tab_error_magnitude_and_xor_correction(*, j_hat: int, s0: int, s
         + _gf8_int_to_alpha_poly_latex(e)
         + r'\bigr) = '
         + _gf8_int_to_alpha_poly_latex(cj)
-        + r' = '
-        + str(cj)
-        + r' = '
+        + r' \leftrightarrow '
         + rc.int_to_bits3(cj)
+        + r' \leftrightarrow '
+        + str(int(cj) & 7)
+        + r'}'
     )
     st.success('**Visszaáll az eredeti** kódszó-jegy a **j** pozíción (ellenőrzés: **c** ugyanitt).')
 
@@ -291,17 +305,20 @@ def _render_dynamic_syndrome_poly_eval_tab(r_ints: list[int]) -> None:
             mod_terms.append(rf'\alpha^{{{exp_mod}}}')
             total += rc.GF(ci) * (rc.GF.primitive_element ** (k * i))
 
-        if sub_terms:
-            st.latex(rf'S_{s_idx}=' + ' + '.join(sub_terms))
-        if expo_terms:
-            st.latex(rf'S_{s_idx}=' + ' + '.join(expo_terms))
-        if mod_terms and mod_terms != expo_terms:
-            st.markdown('Modulo 7 szerint:')
-            st.latex(',\quad '.join((f'{a}={b}' for a, b in zip(expo_terms, mod_terms))))
-            st.markdown('tehát:')
-            st.latex(rf'S_{s_idx}=' + ' + '.join(mod_terms))
+        has_mellek = bool(sub_terms) or bool(expo_terms)
+        if has_mellek:
+            with st.expander('Mellékszámítások', expanded=False):
+                if sub_terms:
+                    st.latex(rf'S_{s_idx}=' + ' + '.join(sub_terms))
+                if expo_terms:
+                    st.latex(rf'S_{s_idx}=' + ' + '.join(expo_terms))
+                if mod_terms and mod_terms != expo_terms:
+                    st.markdown('Modulo 7 szerint:')
+                    st.latex(',\quad '.join((f'{a}={b}' for a, b in zip(expo_terms, mod_terms))))
+                    st.markdown('tehát:')
+                    st.latex(rf'S_{s_idx}=' + ' + '.join(mod_terms))
+                st.markdown('így:')
 
-        st.markdown('így:')
         s_curr = int(s_vals[s_idx])
         st.latex(rf'\boxed{{S_{s_idx}={_gf8_to_alpha_latex(s_curr)}}}')
         if s_idx < 2:
@@ -470,7 +487,7 @@ with st.sidebar:
     st.caption('**r** int: `' + rc.format_int_row(r_ints_list) + '`')
     st.caption('**s = r·Hᵀ** int: `' + rc.format_int_row(s_ints_live) + '`')
 tab_g, tab_enc, tab_err, tab_syn, tab_syn0, tab_dec = st.tabs(
-    ['Alapadatok', 'Kódolás', 'Fogadott szó és hiba', 'Szindroma', 'Szindroma_0', 'Javítás / dekódolás'],
+    ['Alapadatok', 'Kódolás', 'Fogadott szó és hiba', 'Szindroma polinom', 'Szindroma H', 'Javítás / dekódolás'],
 )
 with tab_g:
     st.subheader('Generátorpolinom g(x)')
@@ -627,7 +644,7 @@ with tab_syn0:
         st.latex('\\mathbf{r} = \\begin{bmatrix} ' + r_row_tex + ' \\end{bmatrix}')
     with syn_bot_r:
         st.latex('\\mathbf{s} = \\mathbf{r} \\, H^{\\mathsf{T}} = \\begin{bmatrix} ' + s_row_tex + ' \\end{bmatrix}')
-    st.markdown('**s** GF(8) int (0–7): `' + rc.format_int_row(s_ints) + '`  \n**α hatvány alak** (s₀, s₁, s₂): ' + ', '.join((rc.INT_TO_ALPHA_POWER_STR[v] for v in s_ints)) + '  \n**Polinom alak** (ugyanazok az elemek): ' + ', '.join((rc.INT_TO_ALPHA_STR[v] for v in s_ints)) + '  \n**Megjegyzés:** **s = r·Hᵀ** ugyanazzal a **H**-val, mint az **Alapadatok** fülön (kiértékelési / Vandermonde alak); megegyezik a **Szindroma** fül **y(α), y(α²), y(α³)** számításával.')
+    st.markdown('**s** GF(8) int (0–7): `' + rc.format_int_row(s_ints) + '`  \n**α hatvány alak** (s₀, s₁, s₂): ' + ', '.join((rc.INT_TO_ALPHA_POWER_STR[v] for v in s_ints)) + '  \n**Polinom alak** (ugyanazok az elemek): ' + ', '.join((rc.INT_TO_ALPHA_STR[v] for v in s_ints)) + '  \n**Megjegyzés:** **s = r·Hᵀ** ugyanazzal a **H**-val, mint az **Alapadatok** fülön (kiértékelési / Vandermonde alak); megegyezik a **Szindroma polinom** fül **y(α), y(α²), y(α³)** számításával.')
     ex.render_syndrome_r_dot_Ht_expander(r, H)
     j_hat, _a_hat = rc.single_error_from_syndrome(s.flatten(), H)
     if np.all(s == 0):
