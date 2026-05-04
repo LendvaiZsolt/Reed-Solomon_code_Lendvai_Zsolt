@@ -13,3 +13,7 @@ env/
 /build/
 /dist/
 *.spec.bak
+
+# Véletlen hibateszt kimenet (Streamlit írja, nem verziókezelendő)
+exports/rs_streamlit_random_harness.tsv
+exports/rs_streamlit_random_harness.txt

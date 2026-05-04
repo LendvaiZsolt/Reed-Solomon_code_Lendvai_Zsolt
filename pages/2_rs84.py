@@ -1008,6 +1008,7 @@ with st.sidebar:
     if nav_visibility.SHOW_RS84_GF16_PAGE_LINK:
         st.page_link("pages/2_rs84_gf16.py", label="RS(8,4) GF(16) - törlésre kerül")
     st.page_link("pages/3_dokumentacio.py", label="Használati útmutató")
+    st.page_link("pages/4_veletlen_hibateszt.py", label="Véletlen hibateszt")
     st.divider()
 
     st.header("Bemenetek")
