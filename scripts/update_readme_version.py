@@ -5,7 +5,9 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent.parent
 README = ROOT / "README.md"
@@ -21,6 +23,14 @@ def run_git(*args: str) -> str:
     return (r.stdout or "").strip()
 
 
+def git_commit_time_budapest_label(sha: str) -> str:
+    """Commit időpontja ``Europe/Budapest`` (CET/CEST) szerint, olvasható címkével."""
+    iso = run_git("log", "-1", "--format=%cI", sha)
+    dt = datetime.fromisoformat(iso)
+    local = dt.astimezone(ZoneInfo("Europe/Budapest"))
+    return local.strftime("%Y-%m-%d %H:%M:%S budapesti helyi idő, Europe/Budapest")
+
+
 def replace_readme_version_footer(text: str, new_footer: str) -> str:
     key = "Verziószám:"
     i = text.rfind(key)
@@ -32,7 +42,7 @@ def replace_readme_version_footer(text: str, new_footer: str) -> str:
 def main() -> int:
     sha = (os.environ.get("GITHUB_SHA") or "").strip() or run_git("rev-parse", "HEAD")
     count = run_git("rev-list", "--count", sha)
-    date = run_git("log", "-1", "--format=%ci", sha)
+    date = git_commit_time_budapest_label(sha)
     short = run_git("rev-parse", "--short", sha)
 
     slug = rg.github_repo_slug_or_exit(cwd=ROOT)
