@@ -22,16 +22,15 @@ with st.sidebar:
     st.page_link("pages/2_rs84.py", label="RS(8,4) GF(9)")
     if nav_visibility.SHOW_RS84_GF16_PAGE_LINK:
         st.page_link("pages/2_rs84_gf16.py", label="RS(8,4) GF(16) - törlésre kerül")
-    st.page_link("pages/3_dokumentacio.py", label="Használati útmutató")
     st.page_link("pages/4_veletlen_hibateszt.py", label="Véletlen hibateszt")
+    st.page_link("pages/3_dokumentacio.py", label="Használati útmutató")
     st.divider()
 
 st.markdown(
-    "Minden futáskor véletlen választás: **RS(7,4)** vagy **RS(8,4) GF(9)** ágak között.. "
-    "Ugyanaz a választási logika, mint a bal oldali bemenetek: véletlen üzenet, paritás / injektálási mód "
-    "(ahol értelmes), 0–2 hiba (RS(7,4)-nél legfeljebb 1 szándékos hiba). "
-    "A **TEST_TRUE** azt jelenti, hogy a javítás után visszaállított kódszó **ĉ** megegyezik a küldött **c** "
-    "vektorral; a fogadott **r** általában eltér **c**-től (hiba), a teszt nem **m**-re, hanem **c** és **ĉ** egyezésére épül."
+    "Soronként véletlen ág: **RS(8,4) GF(9)** kétszer akkora eséllyel, mint **RS(7,4)**; az ágon belül ugyanolyan "
+    "véletlen beállítások, mint a fő oldalak bal oldalán. "
+    "0–2 hiba (RS(7,4)-nél legfeljebb 1 szándékos hiba). "
+    "A **TEST_TRUE** azt jelenti, hogy a javított kódszó megegyezik a küldött **c** kódszóval."
 )
 
 out_path = mh.default_output_path(repo_root=_ROOT)

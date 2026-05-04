@@ -13,6 +13,9 @@ import rs84_core_gf9 as g9
 
 Branch = Literal["RS74", "RS84_GF9"]
 
+# Kötegelt teszt: P(RS(7,4)) : P(RS(8,4) GF(9)) = 1 : 2; az ágon belül a meglévő random.
+HARNESS_WEIGHT_RS74 = 1.0 / 3.0
+
 # Kimeneti fájl: tabulátor-elválasztás (TSV) — Excel / táblázatkezelők oszlopokként nyitják meg.
 # A cellatartalom ne tartalmazzon tabulátort.
 HARNESS_FIELD_SEP = "\t"
@@ -172,12 +175,16 @@ def run_random_batch(
     n_tests: int,
     rng: np.random.Generator | None = None,
 ) -> list[tuple[str, str, str, str, str, str, str]]:
-    """Soronként 7 mező (TSV tab): ág, eredeti m, hiba_db, hiba_j, r, ĉ, TEST_*; ĉ==küldött c ⇒ TEST_TRUE."""
+    """Soronként 7 mező (TSV tab): ág, eredeti m, hiba_db, hiba_j, r, ĉ, TEST_*; ĉ==küldött c ⇒ TEST_TRUE.
+
+    Ág: RS(8,4) GF(9) kétszer akkora valószínűséggel, mint RS(7,4) (lásd HARNESS_WEIGHT_RS74); az ágon belül a meglévő random."""
     if rng is None:
         rng = np.random.default_rng()
     rows: list[tuple[str, str, str, str, str, str, str]] = []
     for _ in range(n_tests):
-        branch: Branch = "RS74" if rng.integers(0, 2) == 0 else "RS84_GF9"
+        branch: Branch = (
+            "RS74" if rng.random() < HARNESS_WEIGHT_RS74 else "RS84_GF9"
+        )
         base = _rs74_one_case(rng) if branch == "RS74" else _rs84_one_case(rng)
         rows.append((_branch_field(branch),) + base)
     return rows
