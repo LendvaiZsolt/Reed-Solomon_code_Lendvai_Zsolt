@@ -80,7 +80,7 @@ Nem végeztünk teljes körű vizsgálatot, csak szúrópróbaszerűen ellenőri
 
 [RS(8,4) ML tábla (Markdown a GitHubon)](https://github.com/LendvaiZsolt/Reed-Solomon_code_Lendvai_Zsolt/blob/main/exports/rs84_ml3_unique_nearest_pairs.md)
 
-Verziószám: v1.20 (2026-05-04 03:50:55 budapesti helyi idő, Europe/Budapest; 0d77634)
+Verziószám: v1.21 (2026-05-04 03:54:31 budapesti helyi idő, Europe/Budapest; 05c4709)
 
 **GitHub:** [LendvaiZsolt/Reed-Solomon_code_Lendvai_Zsolt](https://github.com/LendvaiZsolt/Reed-Solomon_code_Lendvai_Zsolt)
 

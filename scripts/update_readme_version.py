@@ -5,9 +5,13 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from zoneinfo import ZoneInfo
+
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:  # Python < 3.9 (ritka CI)
+    ZoneInfo = None  # type: ignore[misc, assignment]
 
 ROOT = Path(__file__).resolve().parent.parent
 README = ROOT / "README.md"
@@ -24,10 +28,19 @@ def run_git(*args: str) -> str:
 
 
 def git_commit_time_budapest_label(sha: str) -> str:
-    """Commit időpontja ``Europe/Budapest`` (CET/CEST) szerint, olvasható címkével."""
-    iso = run_git("log", "-1", "--format=%cI", sha)
-    dt = datetime.fromisoformat(iso)
-    local = dt.astimezone(ZoneInfo("Europe/Budapest"))
+    """Commit időpontja ``Europe/Budapest`` (CET/CEST) szerint.
+
+    A Git ``%ct`` (Unix másodperc, UTC) formátumot használjuk — így nem függünk a
+    ``%cI`` / ``fromisoformat`` változataitól, és elkerüljük a CI parse-hibákat.
+    """
+    ts = int(run_git("log", "-1", "--format=%ct", sha))
+    dt_utc = datetime.fromtimestamp(ts, tz=timezone.utc)
+    if ZoneInfo is None:
+        return dt_utc.strftime("%Y-%m-%d %H:%M:%S UTC (zoneinfo nincs)")
+    try:
+        local = dt_utc.astimezone(ZoneInfo("Europe/Budapest"))
+    except Exception:
+        return dt_utc.strftime("%Y-%m-%d %H:%M:%S UTC (Europe/Budapest zóna nem elérhető)")
     return local.strftime("%Y-%m-%d %H:%M:%S budapesti helyi idő, Europe/Budapest")
 
 
