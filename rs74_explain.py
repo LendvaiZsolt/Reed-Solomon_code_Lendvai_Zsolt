@@ -19,6 +19,14 @@ def syndrome_sum_markdown(si_sum: int, *, mask: int, alpha_map: dict[int, str]) 
     return f'**{si_sum}** — **{al}**'
 
 
+def syndrome_s_i_sum_display_gf8_triple(si_sum: int) -> str:
+    """Szindróma-komponens összeg: int; (polinom); (α-hatvány) — RS(7,4) Szindroma_0 expanderekhez."""
+    v = int(si_sum) & 7
+    poly = rc.INT_TO_ALPHA_STR[v]
+    pwr = rc.INT_TO_ALPHA_POWER_STR[v]
+    return f'{v};   ({poly});   ({pwr})'
+
+
 def format_gf_matrix(mat: galois.FieldArray) -> str:
     rows = []
     for i in range(mat.shape[0]):
@@ -152,7 +160,9 @@ def render_syndrome_r_dot_Ht_expander(r_vec: galois.FieldArray, H_mat: galois.Fi
                 si_lines, si_sum = syndrome_si_derivation_lines(r_vec, H_mat, i)
                 for ln in si_lines:
                     st.markdown(ln)
-                st.success(f'**Összeg (s_{{{i}}})** (GF(8), **⊕**): {syndrome_sum_markdown(si_sum, mask=7, alpha_map=rc.INT_TO_ALPHA_STR)}')
+                st.success(
+                    f'**Összeg (s_{{{i}}})** (GF(8), **⊕**): {syndrome_s_i_sum_display_gf8_triple(si_sum)}'
+                )
 
 
 def render_encoding_m_dot_g_expander(m_row: galois.FieldArray, G_mat: galois.FieldArray, *, parity_right: bool) -> None:
@@ -185,7 +195,9 @@ def render_s0_expander(c_vec: galois.FieldArray, H_mat: galois.FieldArray) -> No
                 ci_lines, si_sum = syndrome_ci_derivation_lines(c_vec, H_mat, i)
                 for ln in ci_lines:
                     st.markdown(ln)
-                st.success(f'**Összeg (s_{{{i}}})** (GF(8), **⊕**): {syndrome_sum_markdown(si_sum, mask=7, alpha_map=rc.INT_TO_ALPHA_STR)}')
+                st.success(
+                    f'**Összeg (s_{{{i}}})** (GF(8), **⊕**): {syndrome_s_i_sum_display_gf8_triple(si_sum)}'
+                )
 
 
 def _rs74_generator_g_poly() -> galois.Poly:

@@ -114,6 +114,14 @@ SHOW_KODOLAS_C6_DESCENDING = False
 SHOW_KODOLAS_CI_INT_LIST = False
 G_BASE, H_BASE = build_gh_from_generator_polynomial()
 
+# Paritás-ellenőrző mátrix Vandermonde / kiértékelési alakban (sorok: α^j, α^{2j}, α^{3j} oszloponként j=0…6).
+# Ugyanaz a 0…7 reprezentáció, mint a GF(8) táblázatnál; minden G = G_BASE·Π permutáció mellett G·Hᵀ = 0.
+H_RS74_PARITY_EVAL = GF([[1, 2, 4, 3, 6, 7, 5], [1, 4, 6, 5, 2, 3, 7], [1, 3, 5, 4, 7, 2, 6]])
+for _pr in (True, False):
+    _Gg, _ = permute_columns_parity_order(G_BASE, H_BASE, _pr)
+    if not np.all(np.array(_Gg @ H_RS74_PARITY_EVAL.T, dtype=int) == 0):
+        raise RuntimeError('RS(7,4): G @ H_RS74_PARITY_EVAL.T nem nulla mindkét paritás-oszloprendnél.')
+
 
 def gf_row_to_ints(row: np.ndarray) -> list[int]:
     return [int(x) for x in np.asarray(row).flatten()]

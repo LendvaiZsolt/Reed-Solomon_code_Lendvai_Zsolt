@@ -33,15 +33,16 @@ Ez a projekt három Streamlit oldalon mutatja be a Reed-Solomon kódolást, hiba
 ### 3. Paraméterek megadása
 
 3.1 RS(7,4)  
-3.1.1 Bemenet: 3 betű szimbólum (A-H), a 4. hely automatikus padding (A).  
-3.1.2 Generátor mátrix elrendezés: Balra ([p0,p1,p2 | m0,m1,m2,m3]) vagy Jobbra ([m0,m1,m2,m3 | p0,p1,p2]).  
-3.1.3 Hiba injektálás: Igen / Nem.
+3.1.1 A „A dolgozat hibaértékeinek használata” eset megtekintése: az oldalsávban kapcsold be a jelölőnégyzetet (dolgozat példa szerinti beállítások, zárolt vezérlők).  
+3.1.2 Bemenet: 3 betű szimbólum (A-H), a 4. hely automatikus padding (A).  
+3.1.3 Generátor mátrix elrendezés: Balra ([p0,p1,p2 | m0,m1,m2,m3]) vagy Jobbra ([m0,m1,m2,m3 | p0,p1,p2]).  
+3.1.4 Hiba injektálás: Igen / Nem.
 
 HA TÖRTÉNIK HIBA INJEKTÁLÁS
 
-3.1.4 Hiba módja: Közvetlen fogadott érték (r[j] megadása), vagy Összeadásos mód (r[j] = c[j] + e).  
-3.1.5 Hibák száma: 1  
-3.1.6 Hibahely (j) és szükség esetén hibaérték (e) megadása minden hibához.
+3.1.5 Hiba módja: Közvetlen fogadott érték (r[j] megadása), vagy Összeadásos mód (r[j] = c[j] + e).  
+3.1.6 Hibák száma: 1  
+3.1.7 Hibahely (j) és szükség esetén hibaérték (e) megadása minden hibához.
 
 3.2 RS(8,4)  
 3.2.1 Bemenet: 4 betű szimbólum (A-P).  

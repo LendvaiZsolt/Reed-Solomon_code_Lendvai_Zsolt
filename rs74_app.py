@@ -2,9 +2,8 @@ from __future__ import annotations
 import importlib
 import importlib.util
 from pathlib import Path
-from typing import Optional
-
 import numpy as np
+import pandas as pd
 import streamlit as st
 
 import nav_visibility
@@ -87,6 +86,252 @@ def _reset_sidebar_startup_defaults() -> None:
         st.session_state[f'err_pos_{i}'] = min(i, rc.N - 1)
         st.session_state[f'err_mag_{i}'] = 1
         st.session_state[f'recv_sym_{i}'] = 0
+
+
+def _gf8_log_alpha(v: int) -> int | None:
+    x = int(v) & 7
+    if x == 0:
+        return None
+    alpha = rc.GF.primitive_element
+    xv = rc.GF(x)
+    for k in range(7):
+        if alpha**k == xv:
+            return k
+    return None
+
+
+def _gf8_to_alpha_latex(v: int) -> str:
+    x = int(v) & 7
+    if x == 0:
+        return '0'
+    k = _gf8_log_alpha(x)
+    if k is None:
+        return str(x)
+    return f'\\alpha^{{{k}}}'
+
+
+def _gf8_int_to_alpha_poly_latex(v: int) -> str:
+    """GF(8) elem **polinom alakja α-val** (LaTeX): `INT_TO_ALPHA_STR` → `\\alpha`, kitevő `²` → `^{2}`."""
+    t = rc.INT_TO_ALPHA_STR[int(v) & 7].replace('α', r'\alpha').replace('²', '^{2}')
+    return t
+
+
+def _render_dec_tab_single_error_position_derivation(*, s_ints: list[int], j_hat: int, r_ints: list[int], eps_int: int) -> None:
+    """Egy szimbólumhiba: S₂/S₁ = S₁/S₀ = αʲ (Vandermonde H mellett); majd ε és javítás (GF(8), ⊕)."""
+    s0, s1, s2 = (int(s_ints[0]) & 7, int(s_ints[1]) & 7, int(s_ints[2]) & 7)
+    st.markdown('**Hiba pozíciójának meghatározása:**')
+    st.latex(r'\frac{S_2}{S_1} = \frac{S_1}{S_0} = \alpha^j')
+    if s0 == 0 or s1 == 0:
+        st.caption('**S₀** vagy **S₁** = 0 esetén ez az egyszerű arány nem mindig használható; a **ĵ** értéket az alábbi **H**-oszlop illesztés adja.')
+        return
+    s0t = _gf8_to_alpha_latex(s0)
+    s1t = _gf8_to_alpha_latex(s1)
+    s2t = _gf8_to_alpha_latex(s2)
+    q21 = int(rc.GF(s2) / rc.GF(s1))
+    q10 = int(rc.GF(s1) / rc.GF(s0))
+    st.latex(r'\frac{S_2}{S_1} = \frac{' + s2t + '}{' + s1t + '} = ' + _gf8_to_alpha_latex(q21))
+    st.latex(r'\frac{S_1}{S_0} = \frac{' + s1t + '}{' + s0t + '} = ' + _gf8_to_alpha_latex(q10))
+    st.markdown('**Tehát**')
+    st.latex(r'\alpha^{j} = ' + _gf8_to_alpha_latex(q21) + r' \Rightarrow j = ' + str(int(j_hat)))
+    rj = int(r_ints[int(j_hat)]) & 7
+    bits = rc.int_to_bits3(rj)
+    st.markdown(
+        f'**0**-tól indexelve a hiba **j = {j_hat}** (a **{j_hat + 1}.** szimbólum a **c₀…c₆** / **r₀…r₆** sorrendben). '
+        f'A fogadott **r[{j_hat}] = {rj}** int (**{bits}** három bit) a hibás szimbólum a fogadott vektorban.'
+    )
+    _render_dec_tab_error_magnitude_and_xor_correction(
+        j_hat=int(j_hat), s0=s0, s1=s1, s2=s2, rj=rj, eps_int=int(eps_int) & 7
+    )
+
+
+def _render_dec_tab_error_magnitude_and_xor_correction(*, j_hat: int, s0: int, s1: int, s2: int, rj: int, eps_int: int) -> None:
+    """ε = S₀·α^{-j} = S₁·α^{-2j} = S₂·α^{-3j} (mod α⁷=1); cⱼ = rⱼ + ε a GF(8)-ben (XOR a biteken)."""
+    F = rc.GF
+    a = F.primitive_element
+    jj = int(j_hat)
+    e = int(eps_int) & 7
+    rj = int(rj) & 7
+    exp_mj = (-jj) % 7
+    exp_m2j = (-2 * jj) % 7
+    exp_m3j = (-3 * jj) % 7
+    chk0 = int(F(s0) * (a**exp_mj))
+    chk1 = int(F(s1) * (a**exp_m2j))
+    chk2 = int(F(s2) * (a**exp_m3j))
+    if not (chk0 == chk1 == chk2 == e):
+        st.caption('**Megjegyzés:** az alábbi lánc a szokásos egy-hibás képleteket illusztrálja; az **ε̂** értéke a fenti oszlop-illesztésből számolva: **' + str(e) + '**.')
+    k0 = _gf8_log_alpha(s0)
+    k1 = _gf8_log_alpha(s1)
+    k2 = _gf8_log_alpha(s2)
+    if k0 is None or k1 is None or k2 is None:
+        return
+    sum_exp01 = (k0 + exp_mj) % 7
+    sum_exp12 = (k1 + exp_m2j) % 7
+    sum_exp23 = (k2 + exp_m3j) % 7
+    st.markdown('**Az eltérés meghatározása:**')
+    st.latex(
+        r'e_{'
+        + str(jj)
+        + r'} = S_0\,\alpha^{-j} = S_1\,\alpha^{-2j} = S_2\,\alpha^{-3j}\quad'
+        + r'(\mathrm{mod}\ \alpha^7=1;\ j='
+        + str(jj)
+        + r')'
+    )
+    st.latex(
+        r'e_{'
+        + str(jj)
+        + r'} = '
+        + _gf8_to_alpha_latex(s0)
+        + r'\,\alpha^{-'
+        + str(jj)
+        + r'} = '
+        + _gf8_to_alpha_latex(s0)
+        + r'\,\alpha^{'
+        + str(exp_mj)
+        + r'} = \alpha^{'
+        + str(k0 + exp_mj)
+        + r'} = \alpha^{'
+        + str(sum_exp01)
+        + r'} = '
+        + _gf8_to_alpha_latex(e)
+    )
+    st.markdown('**Tehát:**')
+    st.latex(r'\boxed{e_{' + str(jj) + r'} = ' + _gf8_to_alpha_latex(e) + r' \leftrightarrow ' + rc.int_to_bits3(e) + r'}')
+    st.markdown(f'**A fogadott {jj + 1}. szimbólum** (**r_{{{jj}}}**):')
+    st.latex(
+        r'r_{'
+        + str(jj)
+        + r'} = '
+        + rc.int_to_bits3(rj)
+        + r' = '
+        + _gf8_int_to_alpha_poly_latex(rj)
+    )
+    cj = int(F(rj) + F(e))
+    st.markdown('**Javítás (GF(8) összeadás = bitek XOR):**')
+    st.latex(
+        r'c_{'
+        + str(jj)
+        + r'} = r_{'
+        + str(jj)
+        + r'} + e_{'
+        + str(jj)
+        + r'} = \bigl('
+        + _gf8_int_to_alpha_poly_latex(rj)
+        + r'\bigr) + \bigl('
+        + _gf8_int_to_alpha_poly_latex(e)
+        + r'\bigr) = '
+        + _gf8_int_to_alpha_poly_latex(cj)
+        + r' = '
+        + str(cj)
+        + r' = '
+        + rc.int_to_bits3(cj)
+    )
+    st.success('**Visszaáll az eredeti** kódszó-jegy a **j** pozíción (ellenőrzés: **c** ugyanitt).')
+
+
+def _poly_y_latex_from_r(r_ints: list[int]) -> str:
+    terms: list[str] = []
+    for i, c in enumerate(r_ints):
+        cc = _gf8_to_alpha_latex(c)
+        if i == 0:
+            terms.append(cc)
+        elif i == 1:
+            terms.append(f'{cc}x')
+        else:
+            terms.append(f'{cc}x^{i}')
+    return ' + '.join(terms)
+
+
+def _render_dynamic_syndrome_poly_eval_tab(r_ints: list[int]) -> None:
+    alpha = rc.GF.primitive_element
+    r_row = rc.GF([int(c) & 7 for c in r_ints]).reshape(1, -1)
+    s_vals = rc.gf_row_to_ints(r_row @ rc.H_RS74_PARITY_EVAL.T)
+    st.caption('**Szindróma int (0…7)** — **r·Hᵀ** (a LaTeX alatti számítással egyezik): `' + rc.format_int_row(s_vals) + '`')
+    st.markdown('Adott:')
+    st.latex(r'y(x)=' + _poly_y_latex_from_r(r_ints))
+    st.markdown('GF(8)-ban:')
+    st.latex(r'\alpha^3=\alpha+1,\qquad \alpha^7=1')
+    st.markdown('A szindrómák:')
+    st.latex(r'S_0=y(\alpha),\qquad S_1=y(\alpha^2),\qquad S_2=y(\alpha^3)')
+    st.markdown('---')
+
+    for s_idx in range(3):
+        k = s_idx + 1
+        eval_point = r'\alpha' if k == 1 else rf'\alpha^{{{k}}}'
+        st.subheader(f'{s_idx + 1}. szindróma')
+        st.latex(rf'S_{s_idx}=y({eval_point})')
+
+        sub_terms: list[str] = []
+        expo_terms: list[str] = []
+        mod_terms: list[str] = []
+        total = rc.GF(0)
+
+        for i, c in enumerate(r_ints):
+            ci = int(c) & 7
+            if ci == 0:
+                continue
+            c_ltx = _gf8_to_alpha_latex(ci)
+            sub_terms.append(f'{c_ltx}({eval_point})^{{{i}}}')
+
+            c_pow = _gf8_log_alpha(ci)
+            if c_pow is None:
+                continue
+            exp_raw = c_pow + k * i
+            expo_terms.append(rf'\alpha^{{{exp_raw}}}')
+            exp_mod = exp_raw % 7
+            mod_terms.append(rf'\alpha^{{{exp_mod}}}')
+            total += rc.GF(ci) * (rc.GF.primitive_element ** (k * i))
+
+        if sub_terms:
+            st.latex(rf'S_{s_idx}=' + ' + '.join(sub_terms))
+        if expo_terms:
+            st.latex(rf'S_{s_idx}=' + ' + '.join(expo_terms))
+        if mod_terms and mod_terms != expo_terms:
+            st.markdown('Modulo 7 szerint:')
+            st.latex(',\quad '.join((f'{a}={b}' for a, b in zip(expo_terms, mod_terms))))
+            st.markdown('tehát:')
+            st.latex(rf'S_{s_idx}=' + ' + '.join(mod_terms))
+
+        st.markdown('így:')
+        s_curr = int(s_vals[s_idx])
+        st.latex(rf'\boxed{{S_{s_idx}={_gf8_to_alpha_latex(s_curr)}}}')
+        if s_idx < 2:
+            st.markdown('---')
+
+    st.markdown('---')
+    st.subheader('Végeredmény')
+    s0, s1, s2 = s_vals
+    st.latex(
+        rf'\boxed{{S_0={_gf8_to_alpha_latex(s0)},\qquad S_1={_gf8_to_alpha_latex(s1)},\qquad S_2={_gf8_to_alpha_latex(s2)}}}'
+    )
+    st.markdown('Vagyis:')
+    st.latex(rf'\boxed{{S=({_gf8_to_alpha_latex(s0)},\,{_gf8_to_alpha_latex(s1)},\,{_gf8_to_alpha_latex(s2)})}}')
+    st.latex(rf'\boxed{{S=({s0},\,{s1},\,{s2})}}')
+    p0, p1, p2 = (_gf8_int_to_alpha_poly_latex(s0), _gf8_int_to_alpha_poly_latex(s1), _gf8_int_to_alpha_poly_latex(s2))
+    st.latex(rf'\boxed{{S=({p0},\,{p1},\,{p2})}}')
+
+
+def _render_g_ht_zero_derivation(G, H) -> None:
+    """GF(8)-ban: (G·Hᵀ)_{i,j} = Σ_k G_{i,k} H_{j,k} — mind a 12 elem 0."""
+    st.subheader('Ellenőrzés: G · Hᵀ = 0')
+    st.markdown(
+        'A **(i, j)** elem a szorzatban: **(G·Hᵀ)ᵢ,ⱼ** = Σₖ **Gᵢ,ₖ · Hⱼ,ₖ** (szorzás és összeg **GF(8)**-ban). '
+        'Ha mind a **4×3** elem **0**, akkor **G·Hᵀ** a nullamátrix — vagyis **H** minden sora ortogonális **G** minden sorára, tehát **H** paritás-ellenőrző mátrix ehhez a **G**-hez (oszloprendben egyező **c** = **m·G** mellett **c·Hᵀ = 0**).'
+    )
+    st.caption('Az alábbi egyenletekben a **+** jel **GF(8)-beli összeadást** jelent (karakterisztika 2 → bitek XOR-ja a 0…7 reprezentáción); a **·** szorzás **GF(8)-beli** szorzás.')
+    for i in range(int(G.shape[0])):
+        st.markdown(f'**G** **{i}.** sora (sorindex **{i}**):')
+        for j in range(int(H.shape[0])):
+            acc = rc.GF(0)
+            parts: list[str] = []
+            for k in range(int(G.shape[1])):
+                gik = int(G[i, k])
+                hjk = int(H[j, k])
+                acc += rc.GF(gik) * rc.GF(hjk)
+                parts.append(f'{gik}\\cdot {hjk}')
+            joined = ' + '.join(parts)
+            st.latex(rf'(G H^{{\mathsf{{T}}}})_{{{i},{j}}} = {joined} = {int(acc)}')
+
+
 st.set_page_config(page_title='RS(7,4) – hibajavító kódolás', layout='wide')
 st.title('RS(7,4) – hibajavító kódolás')
 st.markdown(f'**Műveleti test:** GF(2³), irreducibilis polinom **x³ + x + 1**. **Generátorpolinom** (a megadott alak): $g(x)=x^3+(\\alpha^2+1)x^2+\\alpha x+(\\alpha^2+1)$. A kód hossza **n = {rc.N}**, üzenet **k = {rc.K}**, paritás **n − k = {rc.N - rc.K}**.')
@@ -105,64 +350,118 @@ with st.sidebar:
     elif not dolgozat_alap and _dolgozat_prev:
         _reset_sidebar_startup_defaults()
     st.session_state['_dolgozat_checkbox_prev'] = dolgozat_alap
+    _dolgozat_lock = bool(dolgozat_alap)
     st.header('Bemenetek')
+    if _dolgozat_lock:
+        st.info('**Dolgozat mód:** a bemenetek **zárolva** (a dolgozat példa szerint). Kapcsold ki a fenti jelölőnégyzetet a szerkesztéshez.')
     st.subheader('3 szimbólum (A–H) + padding')
     st.caption('Minden betűhöz 3 bit; a **4. üzenetszimbólum** padding: **A (000) → 0**.')
     chosen: list[str] = []
     cols = st.columns(3)
     for i in range(3):
         with cols[i]:
-            chosen.append(st.selectbox(f'#{i + 1}', rc.LETTER_ORDER, index=i + 1, key=f'letter{i}'))
+            chosen.append(
+                st.selectbox(f'#{i + 1}', rc.LETTER_ORDER, index=i + 1, key=f'letter{i}', disabled=_dolgozat_lock)
+            )
     pad_int = 0
     m_vals = [rc.letter_to_gf_int(ch) for ch in chosen] + [pad_int]
     st.subheader('G mátrix: paritás bal / jobb')
-    parity_sel = st.radio('A kód szó c = m·G sorrendje (ugyanaz a kód, más oszlop-permutáció)', (_SIDEBAR_PARITY_BALRA_LABEL, 'Jobbra: [m₀,m₁,m₂,m₃ | p₀,p₁,p₂]  →  G = [I₄ | P]'), index=0, key='parity_order')
+    parity_sel = st.radio(
+        'A kód szó c = m·G sorrendje (ugyanaz a kód, más oszlop-permutáció)',
+        (_SIDEBAR_PARITY_BALRA_LABEL, 'Jobbra: [m₀,m₁,m₂,m₃ | p₀,p₁,p₂]  →  G = [I₄ | P]'),
+        index=0,
+        key='parity_order',
+        disabled=_dolgozat_lock,
+    )
     parity_right = parity_sel.startswith('Jobbra')
     st.subheader('Hibák injektálása (1 szimbólum)')
-    corrupt = st.checkbox('Hiba beszúrása', value=False, key='corrupt')
+    corrupt = st.checkbox('Hiba beszúrása', value=False, key='corrupt', disabled=_dolgozat_lock)
     inj_mode = _SIDEBAR_INJ_MODE_KOZVETLEN
     num_errors = 1
     err_pos_list: list[int] = [0]
     err_mag_list: list[int] = [1]
     recv_sym_list: list[int] = [0]
     if corrupt:
-        inj_mode = st.radio('Hiba beállítás módja (minden hibára azonos)', (_SIDEBAR_INJ_MODE_KOZVETLEN, _SIDEBAR_INJ_MODE_OSSZEADAS), index=0, key='error_inj_mode')
+        inj_mode = st.radio(
+            'Hiba beállítás módja (minden hibára azonos)',
+            (_SIDEBAR_INJ_MODE_KOZVETLEN, _SIDEBAR_INJ_MODE_OSSZEADAS),
+            index=0,
+            key='error_inj_mode',
+            disabled=_dolgozat_lock,
+        )
         if int(st.session_state.get('num_symbol_errors', 1)) != 1:
             st.session_state['num_symbol_errors'] = 1
-        num_errors = int(st.selectbox('Hibák száma', [1], index=0, key='num_symbol_errors'))
+        num_errors = int(st.selectbox('Hibák száma', [1], index=0, key='num_symbol_errors', disabled=_dolgozat_lock))
         err_pos_list = []
         err_mag_list = []
         recv_sym_list = []
         for i in range(num_errors):
             st.markdown(f'**Hiba {i + 1} / {num_errors}**')
-            p = st.selectbox(f'Pozíció j (0…6) — hiba {i + 1}', list(range(rc.N)), index=min(i, rc.N - 1), key=f'err_pos_{i}')
+            p = st.selectbox(
+                f'Pozíció j (0…6) — hiba {i + 1}',
+                list(range(rc.N)),
+                index=min(i, rc.N - 1),
+                key=f'err_pos_{i}',
+                disabled=_dolgozat_lock,
+            )
             err_pos_list.append(int(p))
             if inj_mode.startswith('Összeadás'):
-                em = st.selectbox(f'Hiba e (nemnulla) — hiba {i + 1}', list(range(1, 8)), index=0, format_func=rc.gf_symbol_select_label, key=f'err_mag_{i}')
+                em = st.selectbox(
+                    f'Hiba e (nemnulla) — hiba {i + 1}',
+                    list(range(1, 8)),
+                    index=0,
+                    format_func=rc.gf_symbol_select_label,
+                    key=f'err_mag_{i}',
+                    disabled=_dolgozat_lock,
+                )
                 err_mag_list.append(int(em))
             else:
-                rs = st.selectbox(f'Fogadott r[j] — hiba {i + 1}', list(range(8)), index=0, format_func=rc.gf_symbol_select_label, key=f'recv_sym_{i}')
+                rs = st.selectbox(
+                    f'Fogadott r[j] — hiba {i + 1}',
+                    list(range(8)),
+                    index=0,
+                    format_func=rc.gf_symbol_select_label,
+                    key=f'recv_sym_{i}',
+                    disabled=_dolgozat_lock,
+                )
                 recv_sym_list.append(int(rs))
-with st.expander('GF(8) elemek: karakter ↔ 3 bit ↔ polinom ↔ α hatvány', expanded=False):
+with st.expander('GF(8) elemek: karakter ↔ 3 bit ↔ polinom ↔ α hatvány ↔ int (0-7)', expanded=False):
     st.caption('A szimbólumok és a mezőelemek megfeleltetése (primitív elem **α**, irreducibilis polinom **x³+x+1**). **Sorrend:** **A → H** betűrend (a **karakter** oszlop szerint); az **α hatvány** oszlop így nem növekvő kitevő szerinti. A **G** és **H** együtthatói ugyanazokkal a 0–7 értékekkel számolhatók. Utolsó oszlop: a sorhoz tartozó **GF(8) egész** (mind a nyolc érték **0…7** pontosan egyszer).')
-    st.dataframe(rc.gf8_element_table_rows(), use_container_width=True, hide_index=True)
+    _gf8_df = pd.DataFrame(rc.gf8_element_table_rows())
+    _gf8_int_col = 'GF(8) int (0–7)'
+    _gf8_df[_gf8_int_col] = _gf8_df[_gf8_int_col].astype(str)
+    st.dataframe(_gf8_df, use_container_width=True, hide_index=True)
 with st.expander('GF(2³) szorzás és összeadás (8×8)', expanded=False):
     st.caption('**Sor / oszlopfejléc:** **a** és **b** (int **0…7**), zárójelben az **α-hatvány** alak (ugyanaz, mint a fenti GF(8) táblázatnál). **Összeadás:** char 2 → a bitek **XOR**-ja (ugyanaz, mint **a ⊕ b** az int reprezentáción). **Szorzás:** mezőbeli **a·b**. Irreducibilis polinom: **x³+x+1** (**galois** GF(2³)).')
     st.markdown(ex.gf8_arithmetic_tables_html(), unsafe_allow_html=True)
-G, H = rc.permute_columns_parity_order(rc.G_BASE, rc.H_BASE, parity_right)
+G, _H_sys_discarded = rc.permute_columns_parity_order(rc.G_BASE, rc.H_BASE, parity_right)
+H = rc.H_RS74_PARITY_EVAL
 m = rc.GF(m_vals).reshape(1, rc.K)
 c = m @ G
-r = c.copy()
+# Új GF(8) vektor minden futáskor (int listából) — elkerüljük a nézet/másolás miatti „beragadt” r / szindróma megjelenítést.
+c_ints_list = rc.gf_row_to_ints(c)
+r_ints_list = list(c_ints_list)
 if corrupt:
-    r = r.copy()
     for hi in range(num_errors):
         pos = err_pos_list[hi]
         if inj_mode.startswith('Összeadás'):
-            r[0, pos] = r[0, pos] + rc.GF(err_mag_list[hi])
+            r_ints_list[pos] = int(rc.GF(r_ints_list[pos]) + rc.GF(err_mag_list[hi])) & 7
         else:
-            r[0, pos] = rc.GF(recv_sym_list[hi])
+            r_ints_list[pos] = int(recv_sym_list[hi]) & 7
+r = rc.GF(r_ints_list).reshape(1, rc.N)
 e = r - c
-tab_g, tab_enc, tab_err, tab_syn, tab_dec = st.tabs(['Alapadatok', 'Kódolás', 'Fogadott szó és hiba', 'Szindróma', 'Javítás / dekódolás'])
+s_row_live = rc.syndrome_row(r, H)
+s_ints_live = rc.gf_row_to_ints(s_row_live)
+# Ne adj meg `key`-t a füleknek `on_change="ignore"` mellett: a 1.56+ verziókban a stabil
+# block_id + nem állapotkövető tab összeegyeztetése miatt a nem aktív fülek tartalma elavulhat.
+with st.sidebar:
+    st.divider()
+    st.markdown('**Élő számítás** (sidebar → **r**, **s**):')
+    st.caption('**r** int: `' + rc.format_int_row(r_ints_list) + '`')
+    st.caption('**s = r·Hᵀ** int: `' + rc.format_int_row(s_ints_live) + '`')
+tab_g, tab_enc, tab_err, tab_syn, tab_syn0, tab_dec = st.tabs(
+    ['Alapadatok', 'Kódolás', 'Fogadott szó és hiba', 'Szindroma', 'Szindroma_0', 'Javítás / dekódolás'],
+)
 with tab_g:
     st.subheader('Generátorpolinom g(x)')
     st.latex('g(x)=(x-\\alpha)(x-\\alpha^2)(x-\\alpha^3)')
@@ -175,13 +474,22 @@ with tab_g:
     st.dataframe(np.array(G, dtype=int), use_container_width=True)
     st.latex('G = \\begin{bmatrix} ' + ex.format_gf_matrix(G) + ' \\end{bmatrix}')
     st.subheader('Paritás-mátrix H (3 × 7)')
-    if parity_right:
-        st.caption('**Szisztematikus H a G-ből:** ha **G = [I₄ | P]**, akkor **H = [Pᵀ | I₃]** (3×7). **H = H_base · Π** a paritás bal/jobb váltásnál.')
-    else:
-        st.caption('**Szisztematikus H a G-ből:** ha **G = [P | I₄]**, akkor **H = [I₃ | Pᵀ]** (3×7). **H = H_base · Π** a paritás bal/jobb váltásnál.')
+    st.caption(
+        '**Kiértékelési (Vandermonde) alak:** a **j**-edik oszlop elemei **1, αʲ, α²ʲ, α³ʲ** (mod **α⁷ = 1**), ahol **j = 0…6** az **aktuális G** oszlopindexeivel egyezik. '
+        'Ezzel **s = r·Hᵀ** komponensei megegyeznek **y(α), y(α²), y(α³)** értékekkel (**y(x) = Σᵢ rᵢ xⁱ**). A szisztematikus **[I|P]** / **[Pᵀ|I]** alak helyett itt ezt a fix **H**-t használjuk a szindróma- és javításfülekben is.'
+    )
     st.dataframe(np.array(H, dtype=int), use_container_width=True)
     st.latex('H = \\begin{bmatrix} ' + ex.format_gf_matrix(H) + ' \\end{bmatrix}')
+    st.markdown('**Hatványalakban:**')
+    st.latex(
+        r'H = \begin{bmatrix}'
+        r'1 & \alpha & \alpha^2 & \alpha^3 & \alpha^4 & \alpha^5 & \alpha^6 \\'
+        r'1 & \alpha^2 & \alpha^4 & \alpha^6 & \alpha & \alpha^3 & \alpha^5 \\'
+        r'1 & \alpha^3 & \alpha^6 & \alpha^2 & \alpha^5 & \alpha & \alpha^4'
+        r'\end{bmatrix}'
+    )
     _call_render_g_parity_mod_g_long_division_expander(parity_right=parity_right)
+    _render_g_ht_zero_derivation(G, H)
 with tab_enc:
     st.subheader('Üzenet és kódolás')
     st.markdown('Választott szimbólumok: **' + ', '.join(chosen) + '**, majd **padding** a 4. helyen (**A** → 0).')
@@ -238,7 +546,7 @@ with tab_enc:
 with tab_err:
     st.subheader('Fogadott vektor és hibavektor')
     c_ints_err = rc.gf_row_to_ints(c)
-    r_ints_err = rc.gf_row_to_ints(r)
+    r_ints_err = r_ints_list
     e_ints_err = rc.gf_row_to_ints(e)
     st.markdown('**c** (küldött) = `' + rc.format_int_row(c_ints_err) + '`  \n**r** (fogadott) = `' + rc.format_int_row(r_ints_err) + '`  \n**e** = **r** − **c** = `' + rc.format_int_row(e_ints_err) + '`')
     st.subheader('21 bites reprezentáció (c₀…c₆)')
@@ -269,12 +577,14 @@ with tab_err:
     else:
         st.success('Nincs szándékos hiba: r = c.')
 with tab_syn:
+    _render_dynamic_syndrome_poly_eval_tab(r_ints_list)
+with tab_syn0:
     st.subheader('Szindróma számítás')
     if corrupt and num_errors >= 2:
         st.caption('Több szimbólumhiba esetén a szindróma általában **nem** írható le egyetlen [pozíció, hiba] párral; az „egy-hibás” illesztés nem megbízható.')
-    s = rc.syndrome_row(r, H)
-    s_ints = rc.gf_row_to_ints(s)
-    r_ints_syn = rc.gf_row_to_ints(r)
+    s = s_row_live
+    s_ints = s_ints_live
+    r_ints_syn = r_ints_list
     c_ints_syn = rc.gf_row_to_ints(c)
     r_row_tex = ' & '.join((str(v) for v in r_ints_syn))
     s_row_tex = ' & '.join((str(v) for v in s_ints))
@@ -307,85 +617,19 @@ with tab_syn:
         st.latex('\\mathbf{r} = \\begin{bmatrix} ' + r_row_tex + ' \\end{bmatrix}')
     with syn_bot_r:
         st.latex('\\mathbf{s} = \\mathbf{r} \\, H^{\\mathsf{T}} = \\begin{bmatrix} ' + s_row_tex + ' \\end{bmatrix}')
-    st.markdown('**s** GF(8) int (0–7): `' + rc.format_int_row(s_ints) + '`  \n**α hatvány alak** (s₀, s₁, s₂): ' + ', '.join((rc.INT_TO_ALPHA_POWER_STR[v] for v in s_ints)) + '  \n**Polinom alak** (ugyanazok az elemek): ' + ', '.join((rc.INT_TO_ALPHA_STR[v] for v in s_ints)) + '  \n**Megjegyzés:** **s = r·Hᵀ** a **szisztematikus H**-val (lásd **Alapadatok** fül).')
+    st.markdown('**s** GF(8) int (0–7): `' + rc.format_int_row(s_ints) + '`  \n**α hatvány alak** (s₀, s₁, s₂): ' + ', '.join((rc.INT_TO_ALPHA_POWER_STR[v] for v in s_ints)) + '  \n**Polinom alak** (ugyanazok az elemek): ' + ', '.join((rc.INT_TO_ALPHA_STR[v] for v in s_ints)) + '  \n**Megjegyzés:** **s = r·Hᵀ** ugyanazzal a **H**-val, mint az **Alapadatok** fülön (kiértékelési / Vandermonde alak); megegyezik a **Szindroma** fül **y(α), y(α²), y(α³)** számításával.')
     ex.render_syndrome_r_dot_Ht_expander(r, H)
-    j_hat, a_hat = rc.single_error_from_syndrome(s.flatten(), H)
-    if j_hat is not None:
-        st.subheader('GF(8) osztások — hibahely meghatározás, oszlop-illesztés')
-    st.markdown(f'### Szindróma és **H** oszlop (egy hibánál)\n\n**Tehát** `{rc.format_int_row(s_ints)}` „**kijelöli**” azt az **H**-**oszlopot** (**j**), amelyre **létezik** olyan **ε ∈ GF(8)**, hogy **s₀ = ε·H₀,ⱼ**, **s₁ = ε·H₁,ⱼ**, **s₂ = ε·H₂,ⱼ** (mind GF(8)).')
+    j_hat, _a_hat = rc.single_error_from_syndrome(s.flatten(), H)
     if np.all(s == 0):
         st.caption('**s = 0:** nincs oszlophoz illesztendő nemtriviális szindróma.')
-    if j_hat is not None:
-        s_f = s.flatten()
-        h_col = H[:, j_hat]
-        s0, s1 = (int(s_f[0]), int(s_f[1]))
-        q_ratio_s: Optional[int] = int(rc.GF(s0) / rc.GF(s1)) if s1 != 0 else None
-        ratio_lines = []
-        for i in range(rc.N - rc.K):
-            hij = int(h_col[i])
-            si = int(s_f[i])
-            if hij == 0:
-                ratio_lines.append(
-                    f'$H_{{{i},{j_hat}}}=0$ — $s_{i}/H_{{{i},{j_hat}}}$ **nem** értelmezhető (**nevező** $0$).'
-                )
-                continue
-            ai = rc.GF(si) / rc.GF(hij)
-            ratio_lines.append(f'$s_{i}/H_{{{i},{j_hat}}} = {si}/{hij} = {int(ai)}$')
-        st.markdown('  \n'.join(ratio_lines))
-        st.markdown(f'Minden **értelmezett** $s_i/H_{{i,j}}$ = **ε** = **{int(a_hat)}**; $j={j_hat}$.')
-        with st.expander('További H-oszlopok (j ≠ ' + str(j_hat) + '): ugyanazok a sᵢ/Hᵢ,ⱼ számítások', expanded=False):
-            st.markdown('##### **sᵢ/Hᵢ,ⱼ** minden sorra (j ≠ ' + str(j_hat) + ')')
-            for j_alt in sorted(j for j in range(rc.N) if j != j_hat):
-                alt_lines, alt_qs = ex.syndrome_column_quotient_markdown_lines(s_f, H, j_alt)
-                st.markdown(f'**H{j_alt}.** oszlop (**j = {j_alt}**):')
-                st.markdown('  \n'.join(alt_lines))
-                if len(alt_qs) >= 2 and len(set(alt_qs)) > 1:
-                    st.caption(f'**j = {j_alt}:** a hányadosok **nem** egyeznek — **nincs** olyan **ε**, amellyel minden sor stimmelne.')
-                elif len(alt_qs) >= 2 and len(set(alt_qs)) == 1:
-                    st.caption(f'**j = {j_alt}:** a számolt hányados(ok) megegyeznek, de ez az oszlop **nem** illeszkedik a teljes **s** vektorra (a helyes oszlop **j = {j_hat}**).')
-        with st.expander('Első két szindróma-komponens hányadosa s₀/s₁ (és ugyanígy az H mátrix j = ' + str(j_hat) + ' oszlopának első két eleme)', expanded=False):
-            st.markdown('**A megfelelő érték.**')
-            st.markdown(f'**H{j_hat}.** oszlop (**j = {j_hat}**):')
-            if q_ratio_s is not None:
-                st.markdown(f'$s_0/s_1 = {s0}/{s1} = {q_ratio_s}$')
-            else:
-                st.caption('$s_1 = 0$: az $s_0/s_1$ hányados nem értelmezett; használd a fenti $s_i/H_{i,j}$ sorokat.')
-            h0c, h1c = (int(h_col[0]), int(h_col[1]))
-            if h1c != 0:
-                q_h_main = int(rc.GF(h0c) / rc.GF(h1c))
-                st.markdown(f'$H_{{0,{j_hat}}}/H_{{1,{j_hat}}} = {h0c}/{h1c} = {q_h_main}$')
-            else:
-                st.caption(
-                    f'$H_{{1,{j_hat}}}=0$ — **H₀,ⱼ/H₁,ⱼ** nem értelmezett, mert **H₁,ⱼ** = 0 ($j={j_hat}$).'
-                )
-            st.markdown('**A nem megfelelő értékek.**')
-            for j_alt in sorted(j for j in range(rc.N) if j != j_hat):
-                st.markdown(f'**H{j_alt}.** oszlop (**j = {j_alt}**):')
-                h0j = int(H[0, j_alt])
-                h1j = int(H[1, j_alt])
-                if h1j == 0:
-                    st.caption(
-                        f'$H_{{1,{j_alt}}}=0$ — **H₀,ⱼ/H₁,ⱼ** nem értelmezett, mert **H₁,ⱼ** = 0 ($j={j_alt}$).'
-                    )
-                    continue
-                qhj_wrong = int(rc.GF(h0j) / rc.GF(h1j))
-                st.markdown(f'$H_{{0,{j_alt}}}/H_{{1,{j_alt}}} = {h0j}/{h1j} = {qhj_wrong}$')
-        pos_bits = []
-        for i in range(rc.N):
-            if i == j_hat:
-                pos_bits.append(f'**[{i}]**')
-            else:
-                pos_bits.append(f'{i}')
-        st.markdown('**Pozíciók (0…6):** ' + '\u2003'.join(pos_bits))
-    elif np.all(s == 0):
         st.success('Nulla szindróma, nincs hiba.')
-    else:
+    elif j_hat is None:
         st.warning('A szindrómához nem található "j" érték.')
 with tab_dec:
     st.subheader('Egy hiba javítása, c visszaállítása.')
-    s_dec = rc.syndrome_row(r, H)
-    s_dec_ints = rc.gf_row_to_ints(s_dec)
-    r_dec_ints = rc.gf_row_to_ints(r)
+    s_dec = s_row_live
+    s_dec_ints = s_ints_live
+    r_dec_ints = r_ints_list
     st.markdown('A fogadott szó **r** és a szindróma együtt határozza meg a javítást. Egy nemnulla szimbólumhiba esetén $\\mathbf{r}=\\mathbf{c}+\\boldsymbol{\\varepsilon}$, ahol $\\boldsymbol{\\varepsilon}$ csak a **j**. pozíción nem **0**; A **j** és $\\varepsilon$ megtalálása után: $\\hat{c}_i=r_i$ ha $i\\neq j$, és $\\hat{c}_j=r_j-\\varepsilon$ (GF(8)).')
     st.write('**Fogadott szó r** = [r₀,…,r₆] (int 0…7):', rc.format_int_row(r_dec_ints))
     st.write('**r** 21 bites sorozat (r₀→r₆, 3 bitenként szóközzel):', rc.bits21_spaced_c0_to_c6(r_dec_ints))
@@ -396,6 +640,9 @@ with tab_dec:
     if j_hat is not None:
         a_hat_int = int(a_hat)
         st.markdown('#### A szindrómából kapott hibahely és nagyság')
+        _render_dec_tab_single_error_position_derivation(
+            s_ints=s_dec_ints, j_hat=int(j_hat), r_ints=r_dec_ints, eps_int=a_hat_int
+        )
         st.write(f'**ĵ** = {j_hat} (hiba pozíció), **ε̂** = {a_hat_int} (hiba nagyság, int)')
         e_manual = rc.GF([0] * rc.N)
         e_manual[j_hat] = a_hat
