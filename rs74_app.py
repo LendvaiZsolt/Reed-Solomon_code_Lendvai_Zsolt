@@ -10,7 +10,7 @@ import nav_visibility
 import rs74_core as rc
 import rs74_explain as ex
 
-# Vandermonde / kiértékelési H (s = r·Hᵀ); Streamlit Cloud-on néha régi rs74_core marad a cache-ben.
+# Fix H matrix fallback.
 _H_RS74_PARITY_EVAL_ROWS = [[1, 2, 4, 3, 6, 7, 5], [1, 4, 6, 5, 2, 3, 7], [1, 3, 5, 4, 7, 2, 6]]
 if not hasattr(rc, 'H_RS74_PARITY_EVAL'):
     try:
@@ -26,7 +26,7 @@ APP_DIR = Path(__file__).resolve().parent
 
 
 def _call_render_g_parity_mod_g_long_division_expander(*, parity_right: bool) -> None:
-    """Streamlit Cloud: néha elavult `rs74_explain` marad a cache-ben; reload + opcionális fájlból exec."""
+    """Render helper with reload fallback."""
     fn = getattr(ex, 'render_g_parity_mod_g_long_division_expander', None)
     disk_err: str | None = None
     if fn is None:
@@ -69,9 +69,34 @@ def on_click_test3() -> None:
     rng = np.random.default_rng()
     for i in range(3):
         st.session_state[f'letter{i}'] = rng.choice(rc.LETTER_ORDER)
+def _apply_random_one_error_preset() -> None:
+    rng = np.random.default_rng()
+    for i in range(3):
+        st.session_state[f'letter{i}'] = str(rng.choice(rc.LETTER_ORDER))
+    if 'parity_order' not in st.session_state:
+        st.session_state['parity_order'] = _SIDEBAR_PARITY_BALRA_LABEL
+    parity_right = str(st.session_state.get('parity_order', _SIDEBAR_PARITY_BALRA_LABEL)).startswith('Jobbra')
+    m_vals = [rc.letter_to_gf_int(str(st.session_state.get(f'letter{i}', 'A'))) for i in range(3)] + [0]
+    G, _ = rc.permute_columns_parity_order(rc.G_BASE, rc.H_BASE, parity_right)
+    c = rc.GF(m_vals).reshape(1, rc.K) @ G
+    pos = int(rng.integers(0, rc.N))
+    c_at_pos = int(c[0, pos]) & 7
+    recv = int(rng.integers(0, 8))
+    if recv == c_at_pos:
+        recv = (recv + 1) % 8
+    st.session_state['corrupt'] = True
+    st.session_state['num_symbol_errors'] = 1
+    st.session_state['err_pos_0'] = pos
+    st.session_state['recv_sym_0'] = recv
 _SIDEBAR_PARITY_BALRA_LABEL = 'Balra: [p₀,p₁,p₂ | m₀,m₁,m₂,m₃]  →  G = [P | I₄]'
+_SIDEBAR_INJ_MODE_RANDOM = 'Random 1 hiba'
 _SIDEBAR_INJ_MODE_KOZVETLEN = 'Közvetlen fogadott érték: r[j] = választott 3 bit (0…7)'
 _SIDEBAR_INJ_MODE_OSSZEADAS = 'Összeadás: r[j] = c[j] + e (e ≠ 0)'
+
+
+def _on_error_mode_change() -> None:
+    if st.session_state.get('error_inj_mode') == _SIDEBAR_INJ_MODE_RANDOM:
+        _apply_random_one_error_preset()
 
 def _apply_dolgozat_alapadatok_preset() -> None:
     st.session_state['letter0'] = 'B'
@@ -121,13 +146,13 @@ def _gf8_to_alpha_latex(v: int) -> str:
 
 
 def _gf8_int_to_alpha_poly_latex(v: int) -> str:
-    """GF(8) elem **polinom alakja α-val** (LaTeX): `INT_TO_ALPHA_STR` → `\\alpha`, kitevő `²` → `^{2}`."""
+    """GF(8) element in alpha-polynomial LaTeX form."""
     t = rc.INT_TO_ALPHA_STR[int(v) & 7].replace('α', r'\alpha').replace('²', '^{2}')
     return t
 
 
 def _render_dec_tab_single_error_position_derivation(*, s_ints: list[int], j_hat: int, r_ints: list[int], eps_int: int) -> None:
-    """Egy szimbólumhiba: S₂/S₁ = S₁/S₀ = αʲ (Vandermonde H mellett); majd ε és javítás (GF(8), ⊕)."""
+    """Single-error position and correction derivation."""
     s0, s1, s2 = (int(s_ints[0]) & 7, int(s_ints[1]) & 7, int(s_ints[2]) & 7)
     st.markdown('**Hiba pozíciójának meghatározása:**')
     if s0 == 0 or s1 == 0:
@@ -168,7 +193,7 @@ def _render_dec_tab_single_error_position_derivation(*, s_ints: list[int], j_hat
 
 
 def _render_dec_tab_error_magnitude_and_xor_correction(*, j_hat: int, s0: int, s1: int, s2: int, rj: int, eps_int: int) -> None:
-    """ε = S₀·α^{-j} = S₁·α^{-2j} = S₂·α^{-3j} (mod α⁷=1); cⱼ = rⱼ + ε a GF(8)-ben (XOR a biteken)."""
+    """Single-error magnitude and GF(8) correction."""
     F = rc.GF
     a = F.primitive_element
     jj = int(j_hat)
@@ -327,7 +352,7 @@ def _render_dynamic_syndrome_poly_eval_tab(r_ints: list[int]) -> None:
                     st.latex(rf'S_{s_idx}=' + ' + '.join(expo_terms))
                 if mod_terms and mod_terms != expo_terms:
                     st.markdown('Modulo 7 szerint:')
-                    st.latex(',\quad '.join((f'{a}={b}' for a, b in zip(expo_terms, mod_terms))))
+                    st.latex(r',\quad '.join((f'{a}={b}' for a, b in zip(expo_terms, mod_terms))))
                     st.markdown('tehát:')
                     st.latex(rf'S_{s_idx}=' + ' + '.join(mod_terms))
                 st.markdown('így:')
@@ -351,7 +376,7 @@ def _render_dynamic_syndrome_poly_eval_tab(r_ints: list[int]) -> None:
 
 
 def _render_g_ht_zero_derivation(G, H) -> None:
-    """GF(8)-ban: (G·Hᵀ)_{i,j} = Σ_k G_{i,k} H_{j,k} — mind a 12 elem 0."""
+    """Show G*H^T zero check in GF(8)."""
     st.subheader('Ellenőrzés: G · Hᵀ = 0')
     st.markdown(
         'A **(i, j)** elem a szorzatban: **(G·Hᵀ)ᵢ,ⱼ** = Σₖ **Gᵢ,ₖ · Hⱼ,ₖ** (szorzás és összeg **GF(8)**-ban). '
@@ -424,9 +449,10 @@ with st.sidebar:
     if corrupt:
         inj_mode = st.radio(
             'Hiba beállítás módja (minden hibára azonos)',
-            (_SIDEBAR_INJ_MODE_KOZVETLEN, _SIDEBAR_INJ_MODE_OSSZEADAS),
+            (_SIDEBAR_INJ_MODE_RANDOM, _SIDEBAR_INJ_MODE_KOZVETLEN, _SIDEBAR_INJ_MODE_OSSZEADAS),
             index=0,
             key='error_inj_mode',
+            on_change=_on_error_mode_change,
             disabled=_dolgozat_lock,
         )
         if int(st.session_state.get('num_symbol_errors', 1)) != 1:
@@ -478,7 +504,7 @@ G, _H_sys_discarded = rc.permute_columns_parity_order(rc.G_BASE, rc.H_BASE, pari
 H = rc.H_RS74_PARITY_EVAL
 m = rc.GF(m_vals).reshape(1, rc.K)
 c = m @ G
-# Új GF(8) vektor minden futáskor (int listából) — elkerüljük a nézet/másolás miatti „beragadt” r / szindróma megjelenítést.
+# Build fresh GF(8) vector each run.
 c_ints_list = rc.gf_row_to_ints(c)
 r_ints_list = list(c_ints_list)
 if corrupt:
@@ -492,13 +518,7 @@ r = rc.GF(r_ints_list).reshape(1, rc.N)
 e = r - c
 s_row_live = rc.syndrome_row(r, H)
 s_ints_live = rc.gf_row_to_ints(s_row_live)
-# Ne adj meg `key`-t a füleknek `on_change="ignore"` mellett: a 1.56+ verziókban a stabil
-# block_id + nem állapotkövető tab összeegyeztetése miatt a nem aktív fülek tartalma elavulhat.
-with st.sidebar:
-    st.divider()
-    st.markdown('**Élő számítás** (sidebar → **r**, **s**):')
-    st.caption('**r** int: `' + rc.format_int_row(r_ints_list) + '`')
-    st.caption('**s = r·Hᵀ** int: `' + rc.format_int_row(s_ints_live) + '`')
+# Avoid tab keys with on_change="ignore" to prevent stale content.
 tab_g, tab_enc, tab_err, tab_syn, tab_syn0, tab_dec = st.tabs(
     ['Alapadatok', 'Kódolás', 'Fogadott szó és hiba', 'Szindroma polinom', 'Szindroma H', 'Javítás / dekódolás'],
 )

@@ -114,8 +114,7 @@ SHOW_KODOLAS_C6_DESCENDING = False
 SHOW_KODOLAS_CI_INT_LIST = False
 G_BASE, H_BASE = build_gh_from_generator_polynomial()
 
-# Paritás-ellenőrző mátrix Vandermonde / kiértékelési alakban (sorok: α^j, α^{2j}, α^{3j} oszloponként j=0…6).
-# Ugyanaz a 0…7 reprezentáció, mint a GF(8) táblázatnál; minden G = G_BASE·Π permutáció mellett G·Hᵀ = 0.
+# Vandermonde-style parity-check matrix for RS(7,4).
 H_RS74_PARITY_EVAL = GF([[1, 2, 4, 3, 6, 7, 5], [1, 4, 6, 5, 2, 3, 7], [1, 3, 5, 4, 7, 2, 6]])
 for _pr in (True, False):
     _Gg, _ = permute_columns_parity_order(G_BASE, H_BASE, _pr)

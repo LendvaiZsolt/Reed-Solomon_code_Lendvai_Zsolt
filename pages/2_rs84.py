@@ -23,7 +23,7 @@ N = 8
 K = 4
 LETTER_ORDER = tuple("ABCDEFGHI")
 
-# Harmadfoku, tetszolegesen valasztott generatorpolinom (keres szerint)
+# Harmadfoku generatorpolinom
 G_POLY = galois.Poly([F(1), ALPHA, ALPHA**2, ALPHA**3], field=F, order="asc")
 
 
@@ -105,8 +105,6 @@ def _build_g_vandermonde() -> galois.FieldArray:
 
 def _build_h_eval_transpose() -> galois.FieldArray:
     # N x (N-K): H^T[v,j] = α^(v*(j+1))
-    # igy G @ H^T = 0 a Vandermonde-felu G mellett
-    # es s_j = sum_v r_v * α^(v*(j+1)) = r(α^(j+1))
     h_t = F.Zeros((N, N - K))
     for v in range(N):
         for j in range(N - K):
@@ -223,7 +221,7 @@ def _render_s0_expander_gf9(c_vec: galois.FieldArray, H_mat: galois.FieldArray) 
 
 
 def _render_v_at_alpha_powers_expander_gf9(r_row: galois.FieldArray, *, expander_label: str) -> None:
-    """v(x)=Σ r_i x^i kiértékelése α^k-nál (k=1…4), tagonkénti GF(9) összegzés."""
+    """v(x) kiertelese alpha^k pontokban (k=1..4)."""
     r_flat = [int(x) for x in np.asarray(r_row).flatten()][:N]
     with st.expander(expander_label, expanded=False):
         st.caption("Minden szorzás és összegzés a **GF(9)** testben.")
@@ -260,7 +258,7 @@ def _render_v_at_alpha_powers_expander_gf9(r_row: galois.FieldArray, *, expander
 
 
 def _render_cramer_mellek_gf9_columns(s1: int, s2: int, s3: int, s4: int) -> None:
-    """GF(9): Cramer mellékszámítás — kulcslépések, nevező, számlálók, hányadosok, összegzés."""
+    """Cramer-mellekszamitas GF(9)-ben, m=2 esetre."""
     FS1, FS2, FS3, FS4 = F(s1), F(s2), F(s3), F(s4)
     nS3, nS4 = -FS3, -FS4
     in3, in4 = int(nS3), int(nS4)
@@ -314,7 +312,7 @@ def _render_cramer_mellek_gf9_columns(s1: int, s2: int, s3: int, s4: int) -> Non
 
 
 def _render_cramer_mellek_gf9_m1(s1: int, s2: int) -> None:
-    """GF(9): $m=1$ Cramer mellékszámítás — $L_1=-S_2/S_1$; $L_2$ nincs."""
+    """Cramer-mellekszamitas GF(9)-ben, m=1 esetre."""
     FS1, FS2 = F(s1), F(s2)
     nS2 = -FS2
     in2 = int(nS2)
@@ -341,7 +339,7 @@ def _render_cramer_mellek_gf9_m1(s1: int, s2: int) -> None:
 
 
 def _st_latex_lx_poly_framed(l1: int, l2: int | None) -> None:
-    """Konkrét L(x): ugyanaz a KaTeX / méret, mint a szimbolikus $L(x)$ sor; \\boxed{} = szűk keret."""
+    """L(x) megjelenitese keretezett alakban."""
     if l2 is None:
         inner = rf"L(x) = 1 + {l1}\,x"
     else:
@@ -350,7 +348,7 @@ def _st_latex_lx_poly_framed(l1: int, l2: int | None) -> None:
 
 
 def _render_step4_locator_roots_formula_gf9(l1: int, l2: int) -> None:
-    """4. pont alatt: $L(x)=0$ megoldóképlete GF(9)-ben; diszkriminánsban $(2\\cdot 2)$, nem a decimális $4$."""
+    """L(x)=0 gyokkeplet megjelenitese GF(9)-ben."""
     q = rs84_core_gf9.locator_quadratic_solution_gf9(l1, l2)
     if q["kind"] == "no_degree":
         st.caption("Az $L_2=L_1=0$ eset itt nem jelenik meg.")
@@ -418,7 +416,7 @@ def _render_step4_locator_roots_formula_gf9(l1: int, l2: int) -> None:
 
 
 def _gf9_discrete_log_alpha(xi: int) -> int | None:
-    """$\\alpha^d$ ($0\\le d<8$) decimális címkéje megegyezik-e $X$-szel; visszaad $d$-t vagy ``None``."""
+    """Visszaadja d-t, ha xi = alpha^d (0<=d<8), kulonben None."""
     xv = F(int(xi) % 9)
     for d in range(8):
         if int(ALPHA**d) == int(xv):
@@ -427,7 +425,7 @@ def _gf9_discrete_log_alpha(xi: int) -> int | None:
 
 
 def _render_step5_hibahelyek_gf9(l1: int, l2_pad: int, m_step: int) -> None:
-    """5. pont: $X_k=\\alpha^{i_k}$ — a kitevő $i_k$ (diszkrét log $\alpha$ alapon, $0\\le d<8$)."""
+    """Hibahely-indexek meghatarozasa az X lokatorokbol."""
     q = rs84_core_gf9.locator_quadratic_solution_gf9(l1, int(l2_pad))
     if m_step == 1:
         if q.get("kind") != "linear" or q.get("X") is None:
@@ -473,7 +471,7 @@ def _render_step5_hibahelyek_gf9(l1: int, l2_pad: int, m_step: int) -> None:
 
 
 def _gf9_y1_y2_vandermonde_cramer(x1: int, x2: int, s1: int, s2: int) -> tuple[int, int] | None:
-    """$B\\bar{y}=\\bar{s}$ megoldása: $(Y_1,Y_2)$ GF(9)-ben; ``None``, ha a Vandermonde-nevező 0."""
+    """Y1, Y2 szamitasa Cramerrel; None, ha a nevezodeterminans 0."""
     Fx1, Fx2 = F(int(x1) % 9), F(int(x2) % 9)
     Fx1sq, Fx2sq = Fx1 * Fx1, Fx2 * Fx2
     D = Fx1 * Fx2sq - Fx2 * Fx1sq
@@ -488,7 +486,7 @@ def _gf9_y1_y2_vandermonde_cramer(x1: int, x2: int, s1: int, s2: int) -> tuple[i
 def _render_step6_By_s_cramer_gf9(
     l1: int, l2: int, s1: int, s2: int, r_ints: list[int], c_ints: list[int]
 ) -> None:
-    """6. pont ($m=2$): $B\\bar{y}=\\bar{s}$ Vandermonde-rendszer $Y_1,Y_2$-re (Cramer)."""
+    """6. lepes m=2 esetre: Y1, Y2 meghatarozasa."""
     q = rs84_core_gf9.locator_quadratic_solution_gf9(l1, l2)
     if q.get("kind") != "quadratic" or q.get("X1") is None or q.get("X2") is None:
         return
@@ -541,7 +539,7 @@ def _render_step6_By_s_cramer_gf9(
 def _render_step7_mellekszamitas_r_minus_e_gf9(
     r_use: list[int], e_list: list[int], c_hat: list[int]
 ) -> None:
-    """$\\overline{c}=\\overline{r}-\\overline{e}$: kivonás felírása, $-\\overline{e}$, majd $\\overline{r}+(-\\overline{e})$ GF(9)-ben."""
+    """Mellekszamitas a c = r - e lepeshez."""
     neg_e = [int(-F(e_list[j])) for j in range(N)]
     r_str = rs84_core_gf9.format_int_row(r_use)
     e_str = rs84_core_gf9.format_int_row(e_list)
@@ -582,7 +580,7 @@ def _render_step7_e_v_c_gf9(
     x1: int,
     x2: int,
 ) -> None:
-    """7. pont ($m=2$): $\\overline{e}$, $\\overline{c}$; $\\overline{c}=\\overline{r}-\\overline{e}$ ellenőrzése."""
+    """7. lepes m=2 esetre: e es c vektorok es ellenorzes."""
     st.markdown(
         "**7) A meghatározott** $Y_1, Y_2$ **értékek és az** $i_1, i_2$ **hibahelyek ismeretében határozzuk meg az** "
         r"$\overline{e}$ **hibavektort és az átküldött kódszót**"
@@ -595,8 +593,7 @@ def _render_step7_e_v_c_gf9(
             "A 7. pont vektorai nem számolhatók: $X_1$ vagy $X_2$ nem $\\alpha^d$ alakú $d\\in\\{0,\\ldots,7\\}$ mellett."
         )
         return
-    # Az 5. pont $X_k=\alpha^{i_k}$ alapján kapott $i_k$ = a kódszó **0…7** indexe ($r[j]$, $c[j]$),
-    # nem a lokátorpolinom foka ↔ index leképezés (`poly_degree_to_vector_index`).
+    # Az i_k ertek kozvetlenul a kodszo indexe (0..7).
     v1, v2 = int(d1) % N, int(d2) % N
     e_list = [0] * N
     e_list[v1] = int(y1) % 9
@@ -640,7 +637,7 @@ def _render_step7_e_v_c_gf9(
 
 
 def _gf9_y1_from_S1_over_X1(s1: int, x1: int) -> int | None:
-    """Egyhiba: $Y_1 = S_1 / X_1$ GF(9)-ben (Vandermonde 1×1); ``None``, ha $X_1=0$."""
+    """Egyhiba eseten Y1 = S1 / X1; None, ha X1=0."""
     fx = F(int(x1) % 9)
     if fx == F(0):
         return None
@@ -648,7 +645,7 @@ def _gf9_y1_from_S1_over_X1(s1: int, x1: int) -> int | None:
 
 
 def _render_step6_mellekszamitas_m1_y1(s1: int, x1: int) -> None:
-    """$m=1$: $Y_1 = S_1 / X_1$ mellékszámítás GF(9)-ben."""
+    """Mellekszamitas m=1 esetben: Y1 = S1 / X1."""
     y_opt = _gf9_y1_from_S1_over_X1(s1, x1)
     fs = "font-size: clamp(0.58rem, min(2.35vw, 0.88rem), 1rem); line-height: 1.38;"
     if y_opt is None:
@@ -665,7 +662,7 @@ def _render_step6_mellekszamitas_m1_y1(s1: int, x1: int) -> None:
 def _render_step6_By_s_single_gf9(
     l1: int, s1: int, r_ints: list[int], c_ints: list[int]
 ) -> None:
-    """6. pont ($m=1$): $B\\bar{y}=\\bar{s}$ egy egyenlet — $Y_1=S_1/X_1$."""
+    """6. lepes m=1 esetre: Y1 meghatarozasa."""
     q = rs84_core_gf9.locator_quadratic_solution_gf9(l1, 0)
     if q.get("kind") != "linear" or q.get("X") is None:
         return
@@ -700,7 +697,7 @@ def _render_step6_By_s_single_gf9(
 def _render_step7_e_v_c_gf9_m1(
     r_ints: list[int], c_ints: list[int], y1: int, x1: int
 ) -> None:
-    """7. pont ($m=1$): $\\overline{e}$, $\\overline{c}$; $\\overline{c}=\\overline{r}-\\overline{e}$ ellenőrzése."""
+    """7. lepes m=1 esetre: e es c vektorok es ellenorzes."""
     st.markdown(
         "**7) A meghatározott** $Y_1$ **érték és az** $i_1$ **hibahely ismeretében határozzuk meg az** "
         r"$\overline{e}$ **hibavektort és az átküldött kódszót**"
@@ -756,7 +753,7 @@ def _render_step7_e_v_c_gf9_m1(
 def _render_step6_mellekszamitas_gf9(
     s1: int, s2: int, x1: int, x2: int, x1sq: int, x2sq: int
 ) -> None:
-    """$Y_1$, $Y_2$: Cramer 2×2 determinánsok kifejtése és hányadosok GF(9)-ben."""
+    """Mellekszamitas m=2 esetben: Y1 es Y2 Cramerrel."""
     FS1, FS2 = F(s1), F(s2)
     Fx1, Fx2 = F(x1), F(x2)
     Fx1sq, Fx2sq = Fx1 * Fx1, Fx2 * Fx2

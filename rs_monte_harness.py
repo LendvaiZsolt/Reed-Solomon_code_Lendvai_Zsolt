@@ -1,4 +1,4 @@
-"""Véletlen RS(7,4) és RS(8,4) GF(9) hibateszt — Streamlit nélkül is futtatható logika."""
+"""Random RS(7,4) and RS(8,4) GF(9) harness logic."""
 
 from __future__ import annotations
 
@@ -13,20 +13,19 @@ import rs84_core_gf9 as g9
 
 Branch = Literal["RS74", "RS84_GF9"]
 
-# Kötegelt teszt: P(RS(7,4)) : P(RS(8,4) GF(9)) = 1 : 2; az ágon belül a meglévő random.
+# Branch weighting: RS(7,4) vs RS(8,4) GF(9) = 1:2.
 HARNESS_WEIGHT_RS74 = 1.0 / 3.0
 
-# Kimeneti fájl: tabulátor-elválasztás (TSV) — Excel / táblázatkezelők oszlopokként nyitják meg.
-# A cellatartalom ne tartalmazzon tabulátort.
+# TSV output separator.
 HARNESS_FIELD_SEP = "\t"
 
-# Első oszlop értékek (ne legyen benne tabulátor)
+# First-column branch labels.
 BRANCH_FIELD_RS74 = "RS(7,4)"
 BRANCH_FIELD_RS84_GF9 = "RS(8,4) GF(9)"
 
 
 def harness_header_line() -> str:
-    """Első sor a kimeneti fájlban — oszlopfejléc."""
+    """Return TSV header row."""
     return HARNESS_FIELD_SEP.join(
         (
             "ág",
@@ -175,9 +174,7 @@ def run_random_batch(
     n_tests: int,
     rng: np.random.Generator | None = None,
 ) -> list[tuple[str, str, str, str, str, str, str]]:
-    """Soronként 7 mező (TSV tab): ág, eredeti m, hiba_db, hiba_j, r, ĉ, TEST_*; ĉ==küldött c ⇒ TEST_TRUE.
-
-    Ág: RS(8,4) GF(9) kétszer akkora valószínűséggel, mint RS(7,4) (lásd HARNESS_WEIGHT_RS74); az ágon belül a meglévő random."""
+    """Generate random harness rows with weighted branch selection."""
     if rng is None:
         rng = np.random.default_rng()
     rows: list[tuple[str, str, str, str, str, str, str]] = []
